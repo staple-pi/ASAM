@@ -266,7 +266,7 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
         loss1 = seg_loss(asam_pred, gt_mask) 
         loss2 = 20 * ce_loss(asam_pred, gt_mask.float())
         #loss3 = 2 * mse_loss(asam_pred_s, gt_binary_bool)
-        loss4 = 0.2*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2) + mse_loss(asam_feature3,sam_feature3) )
+        loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2) + mse_loss(asam_feature3,sam_feature3) )
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         loss = loss1 + loss2 + loss4 + g_loss #+ 0.5 *kl_loss
         loss.backward()
