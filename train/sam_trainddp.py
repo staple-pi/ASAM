@@ -143,7 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir_o',type=str,default='/data/SA1B-o')
     parser.add_argument('--data_num',type=int,default = 112000)
     parser.add_argument('--epochs', type=int, default = 300)
-    parser.add_argument('--batch-size', type=int, default = 4)
+    parser.add_argument('--batch_size', type=int, default = 4)
     parser.add_argument('--lr', type=float, default = 5e-4)    
     parser.add_argument('--end_lr', type=float, default = 1e-5)
     # 是否启用SyncBatchNorm
