@@ -307,7 +307,7 @@ def train_one_epoch_wg(asam_model,sam_o, train_dataloader,epoch,optimizer, devic
         sam_feature0, sam_feature1, sam_feature2, sam_feature3 = sam_features[0], sam_features[1], sam_features[2], sam_features[2]
         loss1 = seg_loss(asam_pred, gt_mask) 
         loss2 = 20 * ce_loss(asam_pred, gt_mask.float())
-        loss4 = 0.5*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2) + mse_loss(asam_feature3,sam_feature3) )
+        loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2) + mse_loss(asam_feature3,sam_feature3) )
         loss = loss1 + loss2 + loss4 
         loss.backward()
         loss = reduce_value(loss, average=True)
