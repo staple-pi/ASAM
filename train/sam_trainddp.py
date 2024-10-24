@@ -113,7 +113,7 @@ def main(args):
     optimizer = torch.optim.AdamW(params,lr=args.lr,weight_decay=0.001)
     optimizer_d = torch.optim.Adam(d_model.parameters(),lr=1e-4,weight_decay=0.001)
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
-    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-5)
+    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=5e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
         mean_loss = train_one_epoch(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size)
@@ -126,7 +126,9 @@ def main(args):
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 50)
             weight_name ="asam-{}.pth".format(num_epoch)
+            d_weight_name ="discriminator-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
+            torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:
             os.remove(checkpoint_path)
@@ -136,18 +138,18 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--sam_checkpoint', type=str, default= "./checkpoint/sam_vit_l_0b3195.pth")
-    parser.add_argument('--asam_checkpoint', type=str, default= './checkpoint/ASAM2.pth')
+    parser.add_argument('--asam_checkpoint', type=str, default= './checkpoint/asam-0.pth')
     parser.add_argument('--discriminator_checkpoint', type=str, default="./checkpoint/sa1b_discriminator.pth")
     parser.add_argument('--weight_savepath', type=str, default= "./checkpoint")
     parser.add_argument('--data_dir',type=str,default="/data/SA1B-a")
     parser.add_argument('--data_dir_o',type=str,default='/data/SA1B-o')
-    parser.add_argument('--data_num',type=int,default = 112000)
-    parser.add_argument('--epochs', type=int, default = 300)
-    parser.add_argument('--batch_size', type=int, default = 4)
+    parser.add_argument('--data_num',type=int,default = 80000)
+    parser.add_argument('--epochs', type=int, default = 120)
+    parser.add_argument('--batch_size', type=int, default = 2)
     parser.add_argument('--lr', type=float, default = 5e-4)    
-    parser.add_argument('--end_lr', type=float, default = 1e-5)
+    parser.add_argument('--end_lr', type=float, default = 1e-6)
     # 是否启用SyncBatchNorm
-    parser.add_argument('--syncBN', type=bool, default=True)
+    parser.add_argument('--syncBN', type=bool, default=False)
     parser.add_argument('--pretrain_use', type=bool, default=False)
     parser.add_argument('--freeze-layers', type=bool, default=False)
     # 不要改该参数，系统会自动分配
