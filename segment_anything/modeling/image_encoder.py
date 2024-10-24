@@ -124,13 +124,6 @@ class ImageEncoderViT(nn.Module):
             GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
         )
-        
-        self.gated_conv4 = nn.Sequential(
-            GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
-        )
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 1024, kernel_size=16, stride=16),
         )
@@ -154,14 +147,7 @@ class ImageEncoderViT(nn.Module):
                 y = self.gated_conv1(y)
                 x = x + y.permute(0,2,3,1)
                 outputs.append(x)
-            elif i ==6:
-                x = blk(x)
-                y = x.permute(0,3,1,2)
-                y = torch.cat((y,mask_downscaled),dim=1)
-                y = self.gated_conv2(y)
-                x = x + y.permute(0,2,3,1)
-                outputs.append(x)
-            elif i ==12:
+            elif i ==10:
                 x = blk(x)
                 y = x.permute(0,3,1,2)
                 y = torch.cat((y,mask_downscaled),dim=1)
@@ -172,9 +158,9 @@ class ImageEncoderViT(nn.Module):
                 x = blk(x)
                 y = x.permute(0,3,1,2)
                 y = torch.cat((y,mask_downscaled),dim=1)
-                y = self.gated_conv3(y)
-                x = x + y.permute(0,2,3,1)      
-                outputs.append(x)          
+                y = self.gated_conv2(y)
+                x = x + y.permute(0,2,3,1)
+                outputs.append(x)     
             else:
                 x = blk(x)
             i += 1
