@@ -437,9 +437,9 @@ class SA1BDataset(Dataset):
         #maskin = maskin[None, :, :, :]
         v_mask = (segmentation & ~occ_mask)
         maskin = mask_preprocess(mask=v_mask, return_torch=True)
-        v_64 = mask_preprocess(mask=v_mask, target_long=64,return_torch=True)
-        occ_64 = mask_preprocess(mask=occ_mask, target_long=64, return_torch=True)
-        return input_image[0], input_image_o[0], bbox_torch, gt_mask, maskin, v_64, occ_64
+        #v_64 = mask_preprocess(mask=v_mask, target_long=64,return_torch=True)
+        omask = mask_preprocess(mask=occ_mask, target_long=1024, return_torch=True)
+        return input_image[0], input_image_o[0], bbox_torch, gt_mask, maskin,omask
 
 
 class KINSDataset(Dataset):
