@@ -116,7 +116,7 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=5e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size)
+        mean_loss = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir',type=str,default="/data/SA1B-a")
     parser.add_argument('--data_dir_o',type=str,default='/data/SA1B-o')
     parser.add_argument('--data_num',type=int,default = 80000)
-    parser.add_argument('--epochs', type=int, default = 120)
+    parser.add_argument('--epochs', type=int, default = 100)
     parser.add_argument('--batch_size', type=int, default = 2)
     parser.add_argument('--lr', type=float, default = 4e-4)    
     parser.add_argument('--end_lr', type=float, default = 1e-6)
