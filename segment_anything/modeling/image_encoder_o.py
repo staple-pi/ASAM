@@ -111,7 +111,7 @@ class StableImageEncoderViT(nn.Module):
         outputs = []
         for blk in self.blocks:
             x = blk(x)
-            if i == 1  or i==6 or i==12 or i ==22:
+            if i == 1  or i==10 or i ==22:
                 outputs.append(x)
             i+=1
         x = self.neck(x.permute(0, 3, 1, 2))
