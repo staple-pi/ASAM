@@ -143,7 +143,7 @@ if __name__ == '__main__':
     parser.add_argument('--weight_savepath', type=str, default= "./checkpoint")
     parser.add_argument('--data_dir',type=str,default="/data/SA1B-a")
     parser.add_argument('--data_dir_o',type=str,default='/data/SA1B-o')
-    parser.add_argument('--data_num',type=int,default = 80000)
+    parser.add_argument('--data_num',type=int,default = 75000)
     parser.add_argument('--epochs', type=int, default = 100)
     parser.add_argument('--batch_size', type=int, default = 2)
     parser.add_argument('--lr', type=float, default = 4e-4)    
