@@ -86,7 +86,8 @@ class SamPredictor:
         self.original_size = original_image_size
         self.input_size = tuple(transformed_image.shape[-2:])
         input_image = self.model.preprocess(transformed_image)
-        self.features = self.model.image_encoder(input_image)
+        self.input_image_zb = self.model.preprocess(transformed_image)  ###################################
+        self.features = input_image#self.model.image_encoder(input_image) ##########################################
         self.is_image_set = True
 
     def predict(
@@ -225,9 +226,12 @@ class SamPredictor:
             masks=mask_input,
         )
 
+        #image_embeddings = self.model.embedding_encoder(self.features,mask_input)   #######################################
+        image_embeddings,_ = self.model.image_encoder(self.input_image_zb,mask_input)   #######################################
         # Predict masks
         low_res_masks, iou_predictions = self.model.mask_decoder(
-            image_embeddings=self.features,
+            #image_embeddings=self.features,
+            image_embeddings = image_embeddings,  #######################################
             image_pe=self.model.prompt_encoder.get_dense_pe(),
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
