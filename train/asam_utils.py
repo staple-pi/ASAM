@@ -284,7 +284,7 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
     return mean_loss
 
 
-def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size):
+def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):  ###################
 
     #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
@@ -295,7 +295,8 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
     asam_model.train()
     if is_main_process():
         train_dataloader = tqdm(train_dataloader, file=sys.stdout)
-    for step, (input_image, input_image_o, bbox_torch, gt_mask, maskin,omask) in enumerate(train_dataloader):
+        data_save={}  ###################
+    for step, (input_image, input_image_o, bbox_torch, gt_mask, maskin,omask,image_filepath) in enumerate(train_dataloader):
         optimizer.zero_grad()
         image, image_o, bbox,gt_mask = input_image.to(device),input_image_o.to(device), bbox_torch.to(device),gt_mask.to(device)
         omask, maskin = omask.to(device), maskin.to(device)
@@ -310,13 +311,17 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         vi_binary_mask = torch.as_tensor(maskin > 0,dtype=torch.float32)
         o_pred = asam_pred_s - vi_binary_mask
         o_binary_mask = torch.as_tensor(omask > 0,dtype=torch.float32)
-        loss2 = 10 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
-        loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
+        loss2 = 20 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
+        loss4 = 0.5*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         loss = loss1 + loss2 + loss4 + g_loss 
         
         loss.backward()
         loss = reduce_value(loss, average=True)
+        if is_main_process():       ###################
+            if 0<step<50:           ###################
+                data_save[str(step)+'_filepath'] = image_filepath       ###################
+                data_save[str(step)+'_pred'] = asam_pred        ###################
         mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
         #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
         if is_main_process():
@@ -327,6 +332,9 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         d_loss = 0.5*loss_d(d_model(image_o,gt_mask), torch.ones(size=(batch_size,1),device=device,requires_grad=True)) + loss_d(d_model(image_o,asam_pred.detach()), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         d_loss.backward()
         optimizer_d.step()
+    if is_main_process():                                               ###################
+        data_save_name ="data_save_{}.pth".format(epoch)              ###################
+        torch.save(data_save, os.path.join(savepath, data_save_name))  ###############
     return mean_loss
     
 def train_one_epoch_wg(asam_model,sam_o, train_dataloader,epoch,optimizer, device,batch_size):
@@ -439,7 +447,7 @@ class SA1BDataset(Dataset):
         maskin = mask_preprocess(mask=v_mask, return_torch=True)
         #v_64 = mask_preprocess(mask=v_mask, target_long=64,return_torch=True)
         omask = mask_preprocess(mask=occ_mask, target_long=1024, return_torch=True)
-        return input_image[0], input_image_o[0], bbox_torch, gt_mask, maskin,omask
+        return input_image[0], input_image_o[0], bbox_torch, gt_mask, maskin,omask, image_filepath
 
 
 class KINSDataset(Dataset):

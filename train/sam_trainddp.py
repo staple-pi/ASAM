@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils import init_distributed_mode, train_one_epoch, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator
+from asam_utils import init_distributed_mode, train_one_epoch, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_new
 
 def main(args):
     if torch.cuda.is_available() is False:
@@ -111,12 +111,12 @@ def main(args):
         #collate_fn=train_dataset.collate_fn,   #?
         )
     optimizer = torch.optim.AdamW(params,lr=args.lr,weight_decay=0.001)
-    optimizer_d = torch.optim.Adam(d_model.parameters(),lr=1e-4,weight_decay=0.001)
+    optimizer_d = torch.optim.Adam(d_model.parameters(),lr=1e-5,weight_decay=0.001)
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
-    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=5e-6)
+    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size)
+        mean_loss = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
