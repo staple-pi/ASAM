@@ -116,7 +116,7 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3 = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath)
+        mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3 = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath,tb_writer)
         scheduler.step()
         scheduler2.step()
         if rank == 0:

@@ -285,9 +285,7 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
     return mean_loss
 
 
-def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):  ###################
-    if is_main_process():
-        writer = SummaryWriter()       
+def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath,writer):  ###################
     #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
     ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
@@ -325,12 +323,6 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
             if 0<step<50:           ###################
                 data_save[str(step)+'_filepath'] = image_filepath       ###################
                 data_save[str(step)+'_pred'] = asam_pred        ###################
-        if is_main_process():
-            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('mloss/sample', loss4.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
         loss.backward()
 
         loss = reduce_value(loss, average=True)
@@ -338,6 +330,13 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         loss2 = reduce_value(loss2, average=True)
         loss4 = reduce_value(loss4, average=True)
         g_loss = reduce_value(g_loss, average=True)
+        
+        if is_main_process():
+            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('mloss/sample', loss4.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
 
         mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
         mean_loss0 = (mean_loss0 * step + loss1.detach()) / (step + 1)  # update mean losses
