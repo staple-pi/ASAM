@@ -318,7 +318,7 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         o_pred = asam_pred_s - vi_binary_mask
         o_binary_mask = torch.as_tensor(omask > 0,dtype=torch.float32)
         loss2 = 20 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
-        loss4 = 0.5*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
+        loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         loss = loss1 + loss2 + loss4 + g_loss 
         if is_main_process():       ###################
