@@ -287,7 +287,7 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
 
 def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):  ###################
     if is_main_process():
-        writer = SummaryWriter(log_dir='logs/epoch_{}'.format(epoch))       
+        writer = SummaryWriter()       
     #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
     ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
