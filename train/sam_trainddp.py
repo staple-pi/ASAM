@@ -116,12 +116,16 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath)
+        mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3 = train_one_epoch_new(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
             tags = ["loss","learning_rate"]
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
+            tb_writer.add_scalar('f_loss', mean_loss0, epoch)
+            tb_writer.add_scalar('b_loss', mean_loss1, epoch)
+            tb_writer.add_scalar('m_loss', mean_loss2, epoch)
+            tb_writer.add_scalar('g_loss', mean_loss3, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 50)

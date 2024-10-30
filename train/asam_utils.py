@@ -295,6 +295,10 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
     mean_loss = torch.zeros(1).to(device)
     loss_d = torch.nn.BCELoss()
     asam_model.train()
+    mean_loss0 = torch.zeros(1).to(device)
+    mean_loss1 = torch.zeros(1).to(device)
+    mean_loss2 = torch.zeros(1).to(device)
+    mean_loss3 = torch.zeros(1).to(device)
     if is_main_process():
         train_dataloader = tqdm(train_dataloader, file=sys.stdout)
         data_save={}  ###################
@@ -317,19 +321,29 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         loss4 = 0.5*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         loss = loss1 + loss2 + loss4 + g_loss 
-        if is_main_process():
-            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('Loss1/sample', loss1.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('Loss2/sample', loss2.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('Loss3/sample', loss4.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
-        loss.backward()
-        loss = reduce_value(loss, average=True)
         if is_main_process():       ###################
             if 0<step<50:           ###################
                 data_save[str(step)+'_filepath'] = image_filepath       ###################
                 data_save[str(step)+'_pred'] = asam_pred        ###################
+        if is_main_process():
+            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('mloss/sample', loss4.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
+        loss.backward()
+
+        loss = reduce_value(loss, average=True)
+        loss1 = reduce_value(loss1, average=True)
+        loss2 = reduce_value(loss2, average=True)
+        loss4 = reduce_value(loss4, average=True)
+        g_loss = reduce_value(g_loss, average=True)
+
         mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
+        mean_loss0 = (mean_loss0 * step + loss1.detach()) / (step + 1)  # update mean losses
+        mean_loss1 = (mean_loss1 * step + loss2.detach()) / (step + 1)  # update mean losses
+        mean_loss2 = (mean_loss2 * step + loss4.detach()) / (step + 1)  # update mean losses
+        mean_loss3 = (mean_loss3 * step + g_loss.detach()) / (step + 1)  # update mean losses
         #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
         if is_main_process():
             train_dataloader.desc = "[epoch {}] mean loss {}".format(epoch, round(mean_loss.item(), 6))
@@ -342,7 +356,7 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
     if is_main_process():                                               ###################
         data_save_name ="data_save_{}.pth".format(epoch)              ###################
         torch.save(data_save, os.path.join(savepath, data_save_name))  ###############
-    return mean_loss
+    return mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3
     
 def train_one_epoch_wg(asam_model,sam_o, train_dataloader,epoch,optimizer, device,batch_size):
 
