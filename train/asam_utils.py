@@ -314,7 +314,8 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         gt_binary_mask1 = torch.as_tensor(gt_mask > 0,dtype=torch.float32)
         vi_binary_mask = torch.as_tensor(maskin > 0,dtype=torch.float32)
         o_pred = asam_pred_s - vi_binary_mask
-        o_binary_mask = torch.as_tensor(omask > 0,dtype=torch.float32)
+        o_gt  = gt_mask - maskin
+        o_binary_mask = torch.as_tensor(o_gt > 0,dtype=torch.float32)
         loss2 = 20 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
         loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
@@ -330,7 +331,7 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         loss2 = reduce_value(loss2, average=True)
         loss4 = reduce_value(loss4, average=True)
         g_loss = reduce_value(g_loss, average=True)
-        
+
         if is_main_process():
             writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
