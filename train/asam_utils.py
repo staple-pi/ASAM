@@ -20,6 +20,7 @@ import torch.nn.init as init
 from PIL import Image
 from torchvision.transforms import Resize
 import torch.distributed as dist
+from torch.utils.tensorboard import SummaryWriter
 
 def is_dist_avail_and_initialized():
     """检查是否支持分布式环境"""
@@ -285,7 +286,8 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
 
 
 def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):  ###################
-
+    if is_main_process():
+        writer = SummaryWriter(log_dir='logs/epoch_{}'.format(epoch))       
     #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
     ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
@@ -315,7 +317,12 @@ def train_one_epoch_new(asam_model,sam_o, d_model, train_dataloader,epoch,optimi
         loss4 = 0.5*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         loss = loss1 + loss2 + loss4 + g_loss 
-        
+        if is_main_process():
+            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('Loss1/sample', loss1.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('Loss2/sample', loss2.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('Loss3/sample', loss4.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
         loss.backward()
         loss = reduce_value(loss, average=True)
         if is_main_process():       ###################
