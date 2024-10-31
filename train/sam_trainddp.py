@@ -37,6 +37,8 @@ def main(args):
         print(args)
         print('Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/')
         tb_writer = SummaryWriter()
+    else:
+        tb_writer = None
     device = torch.device(args.device)
     #args.lr *= args.world_size  # 学习率要根据并行GPU的数量进行倍增
     #set model

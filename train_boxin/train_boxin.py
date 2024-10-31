@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o
+from boxin_utils import init_distributed_mode, train_one_epoch, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator
 
 def main(args):
     if torch.cuda.is_available() is False:
@@ -54,7 +54,7 @@ def main(args):
         new_weight_dict = torch.load(model_weight, map_location=device)
         asam_model.load_state_dict(new_weight_dict, strict=False)
         for k in new_weight_dict.keys():
-            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps'):
+            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps.0'):
                 continue
                 #new_weight_dict[k] = pretrained_state_dict['model'][k]
             else:
@@ -65,7 +65,7 @@ def main(args):
         asam_model.apply(weights_init)
         new_weight_dict = asam_model.state_dict()
         for k in new_weight_dict.keys():
-            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps'):
+            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps.0'):
                 new_weight_dict[k] = pretrained_state_dict[k]
             else:
                 train_layers.append(k)         
@@ -78,8 +78,7 @@ def main(args):
     params=[]
     for name, param in asam_model.named_parameters():
         if any(name.startswith(prefix) for prefix in train_layers):
-            if rank == 0:
-                print(name)
+            print(name)
             params.append(param)
             param.requires_grad = True
         else:
@@ -119,16 +118,20 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-6)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
+        mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3 = train_one_epoch(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size,args.weight_savepath,tb_writer)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
             tags = ["loss","learning_rate"]
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
+            tb_writer.add_scalar('d_loss', mean_loss0, epoch)
+            tb_writer.add_scalar('b_loss', mean_loss1, epoch)
+            tb_writer.add_scalar('m_loss', mean_loss2, epoch)
+            tb_writer.add_scalar('g_loss', mean_loss3, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
-            num_epoch = int(epoch / 10)
-            weight_name ="asam-o-{}.pth".format(num_epoch)
+            num_epoch = int(epoch / 2)
+            weight_name ="asam-{}.pth".format(num_epoch)
             d_weight_name ="discriminator-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
@@ -138,19 +141,18 @@ def main(args):
 
     cleanup()
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sam_checkpoint', type=str, default= "/home/ubuntu/anaconda3/envs/zb/code/segment-anything/checkpoint/sam_vit_l_0b3195.pth")
-    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')
-    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")
-    parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
-    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-3w-a")
-    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-3w-o')
-    parser.add_argument('--data_num',type=int,default = 50000)
-    parser.add_argument('--epochs', type=int, default = 80)
-    parser.add_argument('--batch-size', type=int, default = 1)
-    parser.add_argument('--lr', type=float, default = 5e-4)
+    parser.add_argument('--sam_checkpoint', type=str, default= "./checkpoint/sam_vit_l_0b3195.pth")
+    parser.add_argument('--asam_checkpoint', type=str, default= './checkpoint/asam-0.pth')
+    parser.add_argument('--discriminator_checkpoint', type=str, default="./checkpoint/sa1b_discriminator.pth")
+    parser.add_argument('--weight_savepath', type=str, default= "./checkpoint")
+    parser.add_argument('--data_dir',type=str,default="/data/SA1B-a")
+    parser.add_argument('--data_dir_o',type=str,default='/data/SA1B-o')
+    parser.add_argument('--data_num',type=int,default = 75000)
+    parser.add_argument('--epochs', type=int, default = 100)
+    parser.add_argument('--batch_size', type=int, default = 2)
+    parser.add_argument('--lr', type=float, default = 4e-5)    
     parser.add_argument('--end_lr', type=float, default = 1e-5)
     # 是否启用SyncBatchNorm
     parser.add_argument('--syncBN', type=bool, default=False)

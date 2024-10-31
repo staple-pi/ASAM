@@ -58,7 +58,23 @@ def reduce_value(value, average=True):
 
         return value
 
-
+def box_to_mask(box,mask_shape):
+    # 计算box的宽度和高度
+    box_width = box[2] - box[0]
+    box_height = box[3] - box[1]
+    # 计算扩展的大小
+    expand_width = int(box_width * 0.4)
+    expand_height = int(box_height * 0.4)
+    # 更新box的坐标，并确保不超过mask的边界
+    new_x1 = int(max(0, box[0] - expand_width))
+    new_y1 = int(max(0, box[1] - expand_height))
+    new_x2 = int(min(mask_shape[1], box[2] + expand_width))
+    new_y2 = int(min(mask_shape[0], box[3] + expand_height))
+    # 创建与mask相同形状的数组
+    output_array = np.zeros(mask_shape, dtype=int)
+    # 填充扩展后的box内部区域的值为1
+    output_array[new_y1:new_y2, new_x1:new_x2] = 1
+    return output_array
 
 def get_mask_preprocess_shape(oldh, oldw, long_side_length):
     scale = long_side_length * 1.0 / max(oldh, oldw)
@@ -395,8 +411,79 @@ def train_one_epoch_wg(asam_model,sam_o, train_dataloader,epoch,optimizer, devic
     return mean_loss
 
 
-def train_one_epoch_boxin(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):
+def train_one_epoch_boxin(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath,writer):
+    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
+    seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
+    ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
+    mse_loss = torch.nn.MSELoss()
+    mean_loss = torch.zeros(1).to(device)
+    loss_d = torch.nn.BCELoss()
+    asam_model.train()
+    mean_loss0 = torch.zeros(1).to(device)
+    mean_loss1 = torch.zeros(1).to(device)
+    mean_loss2 = torch.zeros(1).to(device)
+    mean_loss3 = torch.zeros(1).to(device)
+    if is_main_process():
+        train_dataloader = tqdm(train_dataloader, file=sys.stdout)
+        data_save={}  ###################
+    for step, (input_image, input_image_o, bbox_torch, gt_mask, maskin,omask,image_filepath) in enumerate(train_dataloader):
+        optimizer.zero_grad()
+        image, image_o, bbox,gt_mask = input_image.to(device),input_image_o.to(device), bbox_torch.to(device),gt_mask.to(device)
+        omask, maskin = omask.to(device), maskin.to(device)
+        asam_pred, image_feature , asam_features = asam_model(image, bbox, maskin)#[0]
+        image_feature_o, sam_features= sam_o(image_o)
+        asam_feature0, asam_feature1, asam_feature2 = asam_features[0], asam_features[1], asam_features[2]
+        sam_feature0, sam_feature1, sam_feature2 = sam_features[0], sam_features[1], sam_features[2]
     
+        loss1 = 0.5 * seg_loss(asam_pred, gt_mask) 
+        asam_pred_s = torch.sigmoid(asam_pred)
+        gt_binary_mask1 = torch.as_tensor(gt_mask > 0,dtype=torch.float32)
+        vi_binary_mask = torch.as_tensor(maskin > 0,dtype=torch.float32)
+        o_pred = asam_pred_s - vi_binary_mask
+        o_gt  = gt_mask - maskin
+        o_binary_mask = torch.as_tensor(o_gt > 0,dtype=torch.float32)
+        loss2 = 20 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
+        loss4 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
+        g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
+        loss = loss1 + loss2 + loss4 + g_loss 
+        if is_main_process():       ###################
+            if 0<step<50:           ###################
+                data_save[str(step)+'_filepath'] = image_filepath       ###################
+                data_save[str(step)+'_pred'] = asam_pred        ###################
+        loss.backward()
+
+        loss = reduce_value(loss, average=True)
+        loss1 = reduce_value(loss1, average=True)
+        loss2 = reduce_value(loss2, average=True)
+        loss4 = reduce_value(loss4, average=True)
+        g_loss = reduce_value(g_loss, average=True)
+
+        if is_main_process():
+            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('mloss/sample', loss4.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
+
+        mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
+        mean_loss0 = (mean_loss0 * step + loss1.detach()) / (step + 1)  # update mean losses
+        mean_loss1 = (mean_loss1 * step + loss2.detach()) / (step + 1)  # update mean losses
+        mean_loss2 = (mean_loss2 * step + loss4.detach()) / (step + 1)  # update mean losses
+        mean_loss3 = (mean_loss3 * step + g_loss.detach()) / (step + 1)  # update mean losses
+        #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
+        if is_main_process():
+            train_dataloader.desc = "[epoch {}] mean loss {}".format(epoch, round(mean_loss.item(), 6))
+        optimizer.step()
+
+        optimizer_d.zero_grad()
+        d_loss = 0.5*loss_d(d_model(image_o,gt_mask), torch.ones(size=(batch_size,1),device=device,requires_grad=True)) + loss_d(d_model(image_o,asam_pred.detach()), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
+        d_loss.backward()
+        optimizer_d.step()
+    if is_main_process():                                               ###################
+        data_save_name ="data_save_{}.pth".format(epoch)              ###################
+        torch.save(data_save, os.path.join(savepath, data_save_name))  ###############
+    return mean_loss,mean_loss0,mean_loss1,mean_loss2,mean_loss3
+        
 
 
 
@@ -459,6 +546,7 @@ class SA1BDataset(Dataset):
         annotation = annotation_data['annotations'][0]
         x, y, w, h = annotation['bbox']
         bbox = np.array([x, y, x + w, y + h])
+        maskin = box_to_mask(bbox,origin_size) #
         bbox = self._transform.apply_boxes(bbox, origin_size)
         bbox_torch = torch.as_tensor(bbox, dtype=torch.float)
         #bbox_torch = bbox_torch[None, :]   #################
@@ -471,10 +559,12 @@ class SA1BDataset(Dataset):
         occ_mask = mask_utils.decode(annotation['occluder_mask'])
         #maskin = maskin[None, :, :, :]
         v_mask = (segmentation & ~occ_mask)
-        maskin = mask_preprocess(mask=v_mask, return_torch=True)
+        
+        v_mask = mask_preprocess(mask=v_mask, return_torch=True)
         #v_64 = mask_preprocess(mask=v_mask, target_long=64,return_torch=True)
         omask = mask_preprocess(mask=occ_mask, target_long=1024, return_torch=True)
-        return input_image[0], input_image_o[0], bbox_torch, gt_mask, maskin,omask, image_filepath
+        maskin = mask_preprocess(mask=maskin,return_torch=True)
+        return input_image[0], input_image_o[0], bbox_torch, gt_mask, v_mask, omask, maskin,image_filepath
 
 
 class KINSDataset(Dataset):
