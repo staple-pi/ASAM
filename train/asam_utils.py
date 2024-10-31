@@ -394,6 +394,12 @@ def train_one_epoch_wg(asam_model,sam_o, train_dataloader,epoch,optimizer, devic
 
     return mean_loss
 
+
+def train_one_epoch_boxin(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,savepath):
+    
+
+
+
 class SA1BDataset(Dataset):
     def __init__(
         self,
