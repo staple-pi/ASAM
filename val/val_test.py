@@ -168,8 +168,8 @@ def main(args):
             predictor.set_image(input_image)
             prompt_box = bbox_coords[k]
             gt_binary_mask = ground_truth_masks[k]
-            mask_input = visibel_mask[k]
-            #mask_input = occlusion_mask[k]
+            #mask_input = visibel_mask[k]
+            mask_input = occlusion_mask[k]
             mask_input = mask_preprocess(mask_input)  
 
             masks_pred, _, _ = predictor.predict(

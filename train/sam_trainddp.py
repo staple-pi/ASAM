@@ -106,11 +106,8 @@ def main(args):
     train_dataloader = DataLoader(
         train_dataset,
         batch_sampler = train_batch_sampler,
-        #batch_size=args.batch_size,
         pin_memory=True,
         num_workers=nw,
-        #shuffle=False,
-        #collate_fn=train_dataset.collate_fn,   #?
         )
     optimizer = torch.optim.AdamW(params,lr=args.lr,weight_decay=0.001)
     optimizer_d = torch.optim.Adam(d_model.parameters(),lr=1e-5,weight_decay=0.001)

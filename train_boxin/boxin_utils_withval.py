@@ -138,6 +138,14 @@ def init_distributed_mode(args):
                             world_size=args.world_size, rank=args.rank)
     dist.barrier()
 
+def calculate_iou(pred, gt):
+    # 计算预测值和ground truth之间的交并比（IoU）
+    intersection = torch.logical_and(pred, gt).sum().float()
+    
+    union = torch.logical_or(pred, gt).sum().float()
+    iou = intersection / union
+    return iou
+
 
 class ASAM(nn.Module):
     def __init__(
@@ -313,9 +321,32 @@ def train_one_epoch(asam_model,sam_o, d_model, train_dataloader,epoch,optimizer,
         d_loss.backward()
         optimizer_d.step()
     return mean_loss.item(),mean_loss0.item(),mean_loss1.item(),mean_loss2.item(),mean_loss3.item()
+
+
+@torch.no_grad()
+def evaluate(asam_model, val_dataloader, device,epoch):
+    mean_iou = torch.zeros(1).to(device)
+    mean_oiou = torch.zeros(1).to(device)
+    if is_main_process():
+        val_dataloader = tqdm(val_dataloader, file=sys.stdout)
+    #input_image[0], bbox_torch, gt_mask, v_mask, omask, maskin
+    for step, (input_image, bbox_torch, gt_mask, v_mask,o_mask,maskin) in enumerate(val_dataloader):
+        image, bbox = input_image.to(device), bbox_torch.to(device)
+        gt_mask, v_mask, o_mask, maskin = gt_mask.to(device), v_mask.to(device), o_mask.to(device), maskin.to(device)
+        asam_pred, _ , _ = asam_model(image, bbox, maskin)#[0]
+        o_pred = asam_pred - v_mask
+        o_gt = gt_mask - v_mask
+        iou = calculate_iou(asam_pred,gt_mask)
+        oiou = calculate_iou(o_pred,o_gt)
         
+        iou = reduce_value(iou, average=True)
+        oiou = reduce_value(oiou, average=True)
 
-
+        mean_iou = (mean_iou * step + iou.detach()) / (step + 1)  # update mean losses
+        mean_oiou = (mean_oiou * step + oiou.detach()) / (step + 1)  # update mean losses
+        if is_main_process():
+            val_dataloader.desc = "[epoch {}] miou {} moiou".format(epoch, round(mean_iou.item(),5), round(mean_oiou.item(),5))
+    return mean_iou.item(), mean_oiou.item()
 
 class SA1BDataset(Dataset):
     def __init__(
@@ -395,6 +426,77 @@ class SA1BDataset(Dataset):
         omask = mask_preprocess(mask=occ_mask, target_long=1024, return_torch=True)
         maskin = mask_preprocess(mask=maskin,return_torch=True)
         return input_image[0], input_image_o[0], bbox_torch, gt_mask, v_mask, omask, maskin,image_filepath
+
+
+class SA1BDataset_val(Dataset):
+    def __init__(
+        self,
+        image_list, image_path,
+        trnasform=None,
+        pixel_mean: List[float] = [123.675, 116.28, 103.53],
+        pixel_std: List[float] = [58.395, 57.12, 57.375],
+    ):
+        self.image_list = image_list
+        self.image_path = image_path
+        self.transform = trnasform
+        self._transform = ResizeLongestSide(1024)
+        self.pixel_mean = pixel_mean
+        self.pixel_std = pixel_std
+
+    def __len__(self):
+        return len(self.image_list)
+
+    def preprocess(self, x: torch.Tensor) -> torch.Tensor:
+        mean = torch.tensor(self.pixel_mean, device=x.device).view(-1, 1, 1)
+        std = torch.tensor(self.pixel_std, device=x.device).view(-1, 1, 1)
+        x = (x - mean) / std
+        # Pad
+        h, w = x.shape[-2:]
+        padh = 1024 - h
+        padw = 1024 - w
+        x = F.pad(x, (0, padw, 0, padh))
+        return x
+    
+
+    def __getitem__(self, idx):
+        image_filepath = join(self.image_path, self.image_list[idx])
+        # image
+        image = cv2.imread(image_filepath)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        input_image = self._transform.apply_image(image)
+        input_image_torch = torch.as_tensor(input_image)
+        input_image_torch = input_image_torch.permute(2, 0, 1).contiguous()[None, :, :, :]
+        input_image = self.preprocess(input_image_torch)
+
+        annotation_path = image_filepath[:-3] + 'json'
+        with open(annotation_path, 'r') as f:
+            annotation_data = json.load(f)
+        # origin_size
+        w, h = annotation_data['image']['width'], annotation_data['image']['height']
+        origin_size = (h, w)
+        # bbox
+        annotation = annotation_data['annotations'][0]
+        x, y, w, h = annotation['bbox']
+        bbox = np.array([x, y, x + w, y + h])
+        maskin = box_to_mask(bbox,origin_size) #
+        bbox = self._transform.apply_boxes(bbox, origin_size)
+        bbox_torch = torch.as_tensor(bbox, dtype=torch.float)
+        #bbox_torch = bbox_torch[None, :]   #################
+        # gt_mask
+        segmentation = mask_utils.decode(annotation['segmentation'])
+        gt_mask = mask_preprocess(mask=segmentation, return_torch=True)
+       
+        #gt_mask = gt_mask[None, :, :, :] 
+        # maskin
+        occ_mask = mask_utils.decode(annotation['occluder_mask'])
+        #maskin = maskin[None, :, :, :]
+        v_mask = (segmentation & ~occ_mask)
+        
+        v_mask = mask_preprocess(mask=v_mask, return_torch=True)
+        #v_64 = mask_preprocess(mask=v_mask, target_long=64,return_torch=True)
+        omask = mask_preprocess(mask=occ_mask, target_long=1024, return_torch=True)
+        maskin = mask_preprocess(mask=maskin,return_torch=True)
+        return input_image[0], bbox_torch, gt_mask, v_mask, omask, maskin
 
 
 class KINSDataset(Dataset):
