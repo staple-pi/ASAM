@@ -316,7 +316,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         loss = reduce_value(loss, average=True)
         loss1 = reduce_value(loss1, average=True)
         loss2 = reduce_value(loss2, average=True)
-        loss4 = reduce_value(loss4, average=True)
+        loss3 = reduce_value(loss3, average=True)
         g_loss = reduce_value(g_loss, average=True)
         mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
 
@@ -324,7 +324,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
             writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('mloss/sample', loss4.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('mloss/sample', loss3.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
         #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
         if is_main_process():

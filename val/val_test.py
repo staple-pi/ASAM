@@ -208,3 +208,4 @@ if __name__ == '__main__':
     parser.add_argument('--asam_checkpoint', type=str, default= 'E:/code/asam-kins-1.pth')   # asam weight 的地址
     parser.add_argument('--img_dir',type=str,default="E:/Code/KINS/testing/image_2")  # SA1B-test的地址
     opt = parser.parse_args()
+    main(opt)
