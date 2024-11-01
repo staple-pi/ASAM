@@ -54,7 +54,7 @@ def main(args):
         new_weight_dict = torch.load(model_weight, map_location=device)
         asam_model.load_state_dict(new_weight_dict, strict=False)
         for k in new_weight_dict.keys():
-            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps'):
+            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder'):
                 continue
                 #new_weight_dict[k] = pretrained_state_dict['model'][k]
             else:
@@ -65,7 +65,7 @@ def main(args):
         asam_model.apply(weights_init)
         new_weight_dict = asam_model.state_dict()
         for k in new_weight_dict.keys():
-            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder.output_hypernetworks_mlps'):
+            if k in pretrained_state_dict.keys()and not k.startswith('mask_decoder'):
                 new_weight_dict[k] = pretrained_state_dict[k]
             else:
                 train_layers.append(k)         

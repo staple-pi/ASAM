@@ -144,15 +144,15 @@ def main(args):
     with open(annotations_path,'r') as f:
         data = json.load(f)
     annotations_list =  data['annotations']
-    images_list = data['images']
-    i=0
-    while i < len(annotations_list):
-        a_polys = annotations_list[i]['a_segm']
-        i_polys = annotations_list[i]['i_segm']
-        if a_polys == i_polys:
-            del annotations_list[i]
-        else:
-            i += 1
+    if args.moiou:
+        i=0
+        while i < len(annotations_list):
+            a_polys = annotations_list[i]['a_segm']
+            i_polys = annotations_list[i]['i_segm']
+            if a_polys == i_polys:
+                del annotations_list[i]
+            else:
+                i += 1
     lenth_of_imglist = len(annotations_list)
     num_range = lenth_of_imglist
     print(num_range)
@@ -188,7 +188,8 @@ def main(args):
             amask = polys_to_mask(a_polys,height,width)
             i_polys = annotation['i_segm']
             imask = polys_to_mask(i_polys,height,width)
-            maskin = maskin - imask
+            if args.minus_v:
+                maskin = maskin - imask     ##################################################################################
             omask = np.bitwise_xor(amask,imask)
             visibel_mask[i]  =imask     
             ground_truth_masks[i] = amask
@@ -247,8 +248,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--asam_checkpoint', type=str, default= '/checkpoint/asam-kins-1.pth')   # asam weight 的地址
+    parser.add_argument('--asam_checkpoint', type=str, default= '/checkpoint/asam-kins-1.pth')   # train_o weight 的地址
     parser.add_argument('--img_dir',type=str,default="/data/KINS/testing/image_2")      # KINS-test的地址
     parser.add_argument('--annotations_path',type=str,default='/data/KINS/annotations/update_test_2020.json')
+    parser.add_argument('--minus_v',type=bool,default=True)
+    parser.add_argument('--moiou',type=bool,default=True)
     opt = parser.parse_args()
     main(opt)
