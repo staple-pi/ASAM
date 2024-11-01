@@ -103,7 +103,7 @@ def main(args):
     val_img_list =  os.listdir(args.val_data_dir)  
     val_img_list = [img for img in val_img_list if img.endswith(".jpg")]
     val_img_list = val_img_list[:args.val_data_num]
-    val_dataset = SA1BDataset_val(train_img_list, args.val_data_dir)
+    val_dataset = SA1BDataset_val(val_img_list, args.val_data_dir)
     val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
 
     nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])  # number of workers

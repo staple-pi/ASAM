@@ -286,12 +286,11 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
     ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
     mse_loss = torch.nn.MSELoss()
-    mean_loss = torch.zeros(1).to(device)
+    mean_loss0 = torch.zeros(1).to(device)
+    mean_loss1 = torch.zeros(1).to(device)
+    mean_loss2 = torch.zeros(1).to(device)
+    mean_loss3 = torch.zeros(1).to(device)
     loss_d = torch.nn.BCELoss()
-    losses0=[]
-    losses1=[]
-    losses2=[]
-    losses3=[]
     asam_model.train()
     if is_main_process():
         train_dataloader = tqdm(train_dataloader, file=sys.stdout)
@@ -314,9 +313,6 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         loss2 = 20 * mse_loss(o_pred,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
         loss3 = 0.25*(mse_loss(image_feature,image_feature_o) + mse_loss(asam_feature0,sam_feature0) + mse_loss(asam_feature1,sam_feature1) + mse_loss(asam_feature2,sam_feature2))
         g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
-        losses0.append(loss1.item())
-        losses1.append(loss2.item())
-        losses2.append(loss3.item())
         loss = loss1 + loss2 + loss3 + g_loss 
         
         loss.backward()
@@ -326,26 +322,26 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         loss3 = reduce_value(loss3, average=True)
         g_loss = reduce_value(g_loss, average=True)
         mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
-
+        mean_loss0 = (mean_loss0 * step + loss1.detach()) / (step + 1)  # update mean losses
+        mean_loss1 = (mean_loss1 * step + loss2.detach()) / (step + 1)  # update mean losses
+        mean_loss2 = (mean_loss2 * step + loss3.detach()) / (step + 1)  # update mean losses
+        mean_loss3 = (mean_loss3 * step + g_loss.detach()) / (step + 1)  # update mean losses
         if is_main_process():
             writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
-            writer.add_scalar('floss/sample', loss1.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('dloss/sample', loss1.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('bloss/sample', loss2.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('mloss/sample', loss3.item(), epoch * len(train_dataloader) + step)
             writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step)
         #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
         if is_main_process():
-            train_dataloader.desc = "[epoch {}] mean loss {}".format(epoch, round(mean_loss.item(), 6))
+            train_dataloader.desc = "[epoch {}] mean loss {},dloss {}, bloss {},mloss {},gloss {}".format(epoch, round(mean_loss.item(), 6),round(mean_loss0.item(), 6),round(mean_loss1.item(), 6),round(mean_loss2.item(), 6),round(mean_loss3.item(), 6))
         optimizer.step()
 
         optimizer_d.zero_grad()
         d_loss = 0.5*loss_d(d_model(image_o,gt_mask), torch.ones(size=(batch_size,1),device=device,requires_grad=True)) + loss_d(d_model(image_o,asam_pred.detach()), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
-        losses3.append(d_loss.item())
         d_loss.backward()
         optimizer_d.step()
-    if is_main_process():
-        print(f'lr:{optimizer.param_groups[0]["lr"]}, loss1 {mean(losses0)}, loss2 {mean(losses1)}, loss3 {mean(losses2)}, dloss {mean(losses3)}')
-    return mean_loss
+    return mean_loss.item(),mean_loss0.item(),mean_loss1.item(),mean_loss2.item(),mean_loss3.item()
 
 @torch.no_grad()
 def evaluate(asam_model, val_dataloader, device,epoch):
