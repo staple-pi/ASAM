@@ -248,9 +248,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--asam_checkpoint', type=str, default= '/checkpoint/asam-kins-1.pth')   # train_o weight 的地址
-    parser.add_argument('--img_dir',type=str,default="/data/KINS/testing/image_2")      # KINS-test的地址
-    parser.add_argument('--annotations_path',type=str,default='/data/KINS/annotations/update_test_2020.json')
+    parser.add_argument('--asam_checkpoint', type=str, default= "E:/code/asam-2w-0.pth")   # train_o weight 的地址
+    parser.add_argument('--img_dir',type=str,default='E:/code/KINS/testing/image_2')      # KINS-test的地址
+    parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
     parser.add_argument('--minus_v',type=bool,default=True)
     parser.add_argument('--moiou',type=bool,default=True)
     opt = parser.parse_args()
