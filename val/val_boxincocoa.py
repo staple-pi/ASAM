@@ -19,6 +19,15 @@ import torch.nn.init as init
 from torch.nn.functional import threshold, normalize
 import torch.nn.functional as F 
 import argparse
+def str2bool(v):
+    if isinstance(v,bool):
+        return v
+    if v.lower() in ('yes','true','t','y','1'):
+        return True
+    elif v.lower() in ('no','false','f','n','0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected')
 
 def read_json(file):
     # 打开 JSON 文件
@@ -267,9 +276,10 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--asam_checkpoint', type=str, default= "E:/code/asam-2w-0.pth")   # train_o weight 的地址
-    parser.add_argument('--img_dir',type=str,default='/data/COCOA/val2014')      # KINS-test的地址
-    parser.add_argument('--annotations_path',type=str,default='/data/COCOA/annotations/my_COCOA_val_occ.json')
-    parser.add_argument('--minus_v',type=bool,default=True)
-    parser.add_argument('--moiou',type=bool,default=True)
+    parser.add_argument('--img_dir',type=str,default='E:/code/COCOA/val2014')      # KINS-test的地址
+    parser.add_argument('--annotations_path',type=str,default= 'E:/code/COCOA/annotations/my_COCOA_val_occ.json')
+    parser.add_argument('--minus_v',type=str2bool,default=True)
+    parser.add_argument('--moiou',type=str2bool,default=True)
     opt = parser.parse_args()
+    print("minus_v:", opt.minus_v, "moiou:", opt.moiou)
     main(opt)

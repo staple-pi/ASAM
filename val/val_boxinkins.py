@@ -20,6 +20,16 @@ from torch.nn.functional import threshold, normalize
 import torch.nn.functional as F 
 import argparse
 
+def str2bool(v):
+    if isinstance(v,bool):
+        return v
+    if v.lower() in ('yes','true','t','y','1'):
+        return True
+    elif v.lower() in ('no','false','f','n','0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected')
+    
 def read_json(file):
     # 打开 JSON 文件
     with open(file, "r") as f:
@@ -160,7 +170,7 @@ def main(args):
     total_num = 0
     total_ious = 0.
     total_occlu_ious = 0.
-    while batch_no < 2000:
+    while batch_no < 1000:
         bbox_coords = {}
         occlusion_mask = {}
         ground_truth_masks = {}
@@ -253,7 +263,8 @@ if __name__ == '__main__':
     parser.add_argument('--asam_checkpoint', type=str, default= "E:/code/asam-2w-0.pth")   # train_o weight 的地址
     parser.add_argument('--img_dir',type=str,default='E:/code/KINS/testing/image_2')      # KINS-test的地址
     parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
-    parser.add_argument('--minus_v',type=bool,default=True)
-    parser.add_argument('--moiou',type=bool,default=False)
+    parser.add_argument('--minus_v',type=str2bool,default=True)
+    parser.add_argument('--moiou',type=str2bool,default=False)
     opt = parser.parse_args()
+    print("minus_v:", opt.minus_v, "moiou:", opt.moiou)
     main(opt)
