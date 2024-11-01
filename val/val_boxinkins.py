@@ -190,6 +190,8 @@ def main(args):
             imask = polys_to_mask(i_polys,height,width)
             if args.minus_v:
                 maskin = maskin - imask     ##################################################################################
+            if np.array_equal(imask, amask):
+                maskin = np.zeros_like(amask)
             omask = np.bitwise_xor(amask,imask)
             visibel_mask[i]  =imask     
             ground_truth_masks[i] = amask
@@ -252,6 +254,6 @@ if __name__ == '__main__':
     parser.add_argument('--img_dir',type=str,default='E:/code/KINS/testing/image_2')      # KINS-test的地址
     parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
     parser.add_argument('--minus_v',type=bool,default=True)
-    parser.add_argument('--moiou',type=bool,default=True)
+    parser.add_argument('--moiou',type=bool,default=False)
     opt = parser.parse_args()
     main(opt)

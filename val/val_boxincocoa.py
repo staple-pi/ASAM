@@ -124,6 +124,14 @@ def box_to_mask(box,mask_shape):
     output_array[new_y1:new_y2, new_x1:new_x2] = 1
     return output_array
 
+def mask_to_bbox(mask):
+    rows, cols = np.where(mask == 1)
+    if len(rows) == 0 or len(cols) == 0:
+        return None
+    x_min, x_max = cols.min(), cols.max()
+    y_min, y_max = rows.min(), rows.max()
+    return [x_min, y_min, x_max, y_max]
+
 #sam_checkpoint = "E:/code/fine_mask_unet.pth"
 
 def main(args):
@@ -140,16 +148,15 @@ def main(args):
     sam.to(device=device)
     predictor = SamPredictor(sam)
 
-    kins = COCO(annotations_path)
+    coco = COCO(annotations_path)
     with open(annotations_path,'r') as f:
         data = json.load(f)
     annotations_list =  data['annotations']
     if args.moiou:
         i=0
         while i < len(annotations_list):
-            a_polys = annotations_list[i]['a_segm']
-            i_polys = annotations_list[i]['i_segm']
-            if a_polys == i_polys:
+            keys = annotations_list[i].keys()
+            if 'invisible_mask' not in keys:
                 del annotations_list[i]
             else:
                 i += 1
@@ -175,27 +182,38 @@ def main(args):
         for i in range(batch_no, batch_no+50):
             annotation = annotations_list[i]
             image_id = annotations_list[i]['image_id']
-            image_info = kins.loadImgs([image_id])[0]
+            image_info = coco.loadImgs([image_id])[0]
             image_name = image_info['file_name']
             height, width = image_info['height'], image_info['width']
             image_path[i] = os.path.join(image_dir,image_name)
             origin_size = (height,width)
-            x, y, w, h = annotation['a_bbox']
-            box = np.array([x, y, x + w, y + h])
-            bbox_coords[i] = np.array([x, y, x + w, y + h])
+            a_polys = annotation['segmentation']
+            a_polys = [a_polys]
+            gt_mask = polys_to_mask(a_polys,height,width)
+            x1,y1,x2,y2 = mask_to_bbox(gt_mask)
+            box = np.array([x1,y1,x2,y2])
+            bbox_coords[i] = box
             maskin = box_to_mask(box,origin_size)
-            a_polys = annotation['a_segm']
-            amask = polys_to_mask(a_polys,height,width)
-            i_polys = annotation['i_segm']
-            imask = polys_to_mask(i_polys,height,width)
+            keys = annotation.keys()
+            if 'visible_mask' in keys:
+                visible_mask = annotation['visible_mask']
+                vmask = mask_utils.decode(visible_mask)
+            else:
+                vmask = gt_mask  #np.zeros_like(gt_mask)
             if args.minus_v:
-                maskin = maskin - imask     ##################################################################################
-            omask = np.bitwise_xor(amask,imask)
-            visibel_mask[i]  =imask     
-            ground_truth_masks[i] = amask
+                maskin = maskin - vmask             ####################################################################################
+            if 'invisible_mask' in keys:
+                occ_mask = annotation['invisible_mask']
+                omask = mask_utils.decode(occ_mask)
+            else:
+                omask =   gt_mask - vmask      
+            if np.array_equal(vmask, gt_mask):
+                maskin = np.zeros_like(gt_mask)
+            visibel_mask[i]  =vmask     
+            ground_truth_masks[i] = gt_mask
             occlusion_mask[i] = omask
             maskinput[i] = maskin
-            img_size[i] = [height,width]    
+            img_size[i] = [height,width]   
         transformed_data = defaultdict(dict)
 
         # 将图像转换为SAM的格式
@@ -249,8 +267,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--asam_checkpoint', type=str, default= "E:/code/asam-2w-0.pth")   # train_o weight 的地址
-    parser.add_argument('--img_dir',type=str,default='E:/code/KINS/testing/image_2')      # KINS-test的地址
-    parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
+    parser.add_argument('--img_dir',type=str,default='/data/COCOA/val2014')      # KINS-test的地址
+    parser.add_argument('--annotations_path',type=str,default='/data/COCOA/annotations/my_COCOA_val_occ.json')
     parser.add_argument('--minus_v',type=bool,default=True)
     parser.add_argument('--moiou',type=bool,default=True)
     opt = parser.parse_args()
