@@ -143,14 +143,6 @@ def main(args):
         mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.train_batch_size, tb_writer)
         scheduler.step()
         scheduler2.step()
-
-        if epoch % args.val_interval == 0:
-            miou,moiou = evaluate(model=asam,data_loader=val_dataloader,device=device, epoch=epoch)
-            if rank == 0:
-                tags = ["miou","moiou",]
-                tb_writer.add_scalar(tags[0], miou, epoch)
-                tb_writer.add_scalar(tags[1], moiou, epoch)       
-
         if rank == 0:
             tags = ["loss","learning_rate"]
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
@@ -161,6 +153,15 @@ def main(args):
             d_weight_name ="discriminator-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
+            
+        if epoch % args.val_interval == 0:
+            miou,moiou = evaluate(model=asam,data_loader=val_dataloader,device=device, epoch=epoch)
+            if rank == 0:
+                tags = ["miou","moiou",]
+                tb_writer.add_scalar(tags[0], miou, epoch)
+                tb_writer.add_scalar(tags[1], moiou, epoch)       
+
+
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:
             os.remove(checkpoint_path)
