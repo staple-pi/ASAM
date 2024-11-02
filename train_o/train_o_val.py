@@ -117,7 +117,7 @@ def main(args):
     val_dataset = SA1BDataset_val(val_img_list, args.val_data_dir)
     val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
 
-    nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])  # number of workers
+    nw = min([os.cpu_count(), args.train_batch_size if args.train_batch_size > 1 else 0, 8])  # number of workers
     if rank == 0:
         print('Using {} dataloader workers every process'.format(nw))
         print("Number of training samples: ", len(train_dataset))
@@ -129,7 +129,7 @@ def main(args):
         )
     val_dataloader = DataLoader(
         val_dataset,
-        batch_size=args.batch_size,
+        batch_size=args.val_batch_size,
         sampler=val_sampler,
         pin_memory=True,
         num_workers=nw,
@@ -140,7 +140,7 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-5)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
+        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.train_batch_size, tb_writer)
         scheduler.step()
         scheduler2.step()
 

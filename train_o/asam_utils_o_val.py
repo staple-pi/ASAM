@@ -286,6 +286,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
     ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
     mse_loss = torch.nn.MSELoss()
+    mean_loss = torch.zeros(1).to(device)
     mean_loss0 = torch.zeros(1).to(device)
     mean_loss1 = torch.zeros(1).to(device)
     mean_loss2 = torch.zeros(1).to(device)
@@ -341,7 +342,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         d_loss = 0.5*loss_d(d_model(image_o,gt_mask), torch.ones(size=(batch_size,1),device=device,requires_grad=True)) + loss_d(d_model(image_o,asam_pred.detach()), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
         d_loss.backward()
         optimizer_d.step()
-    return mean_loss.item(),mean_loss0.item(),mean_loss1.item(),mean_loss2.item(),mean_loss3.item()
+    return mean_loss.item()#,mean_loss0.item(),mean_loss1.item(),mean_loss2.item(),mean_loss3.item()
 
 @torch.no_grad()
 def evaluate(asam_model, val_dataloader, device,epoch):
