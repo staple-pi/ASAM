@@ -200,7 +200,7 @@ def main(args):
             imask = polys_to_mask(i_polys,height,width)
             if args.minus_v:
                 maskin = maskin - imask     ##################################################################################
-            if np.array_equal(imask, amask):
+            if a_polys==i_polys:
                 maskin = np.zeros_like(amask)
             omask = np.bitwise_xor(amask,imask)
             visibel_mask[i]  =imask     

@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o_val import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o,evaluate,SA1BDataset_val
+from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o
 
 def str2bool(v):
     if isinstance(v,bool):
@@ -34,7 +34,7 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected')
-
+    
 def main(args):
     if torch.cuda.is_available() is False:
         raise EnvironmentError("not find GPU device for training.")
@@ -104,20 +104,13 @@ def main(args):
     asam = torch.nn.parallel.DistributedDataParallel(asam, device_ids=[args.gpu],find_unused_parameters=True)
     d_model = torch.nn.parallel.DistributedDataParallel(d_model, device_ids=[args.gpu],broadcast_buffers=False)
     #set dataset
-    train_img_list = os.listdir(args.train_data_dir)    
-    train_img_list = [img for img in train_img_list if img.endswith(".jpg")]
-    train_img_list = train_img_list[:args.train_data_num]
-    train_dataset = SA1BDataset(train_img_list, args.train_data_dir, args.train_data_dir_o)
+    img_list = os.listdir(args.data_dir)    
+    img_list = [img for img in img_list if img.endswith(".jpg")]
+    img_list = img_list[:args.data_num]
+    train_dataset = SA1BDataset(img_list, args.data_dir, args.data_dir_o)
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    train_batch_sampler = torch.utils.data.BatchSampler(train_sampler, args.train_batch_size, drop_last=True)
-
-    val_img_list =  os.listdir(args.val_data_dir)  
-    val_img_list = [img for img in val_img_list if img.endswith(".jpg")]
-    val_img_list = val_img_list[:args.val_data_num]
-    val_dataset = SA1BDataset_val(val_img_list, args.val_data_dir)
-    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
-
-    nw = min([os.cpu_count(), args.train_batch_size if args.train_batch_size > 1 else 0, 8])  # number of workers
+    train_batch_sampler = torch.utils.data.BatchSampler(train_sampler, args.batch_size, drop_last=True)
+    nw = min([os.cpu_count(), args.batch_size if args.batch_size > 1 else 0, 8])  # number of workers
     if rank == 0:
         print('Using {} dataloader workers every process'.format(nw))
         print("Number of training samples: ", len(train_dataset))
@@ -127,20 +120,13 @@ def main(args):
         pin_memory=True,
         num_workers=nw,
         )
-    val_dataloader = DataLoader(
-        val_dataset,
-        batch_size=args.val_batch_size,
-        sampler=val_sampler,
-        pin_memory=True,
-        num_workers=nw,
-        )
     optimizer = torch.optim.AdamW(params,lr=args.lr,weight_decay=0.001)
-    optimizer_d = torch.optim.Adam(d_model.parameters(),lr=1e-4,weight_decay=0.001)
+    optimizer_d = torch.optim.Adam(d_model.parameters(),lr=args.lr,weight_decay=0.001)
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
-    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=1e-5)
+    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=args.end_lr)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.train_batch_size, tb_writer)
+        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
@@ -148,20 +134,11 @@ def main(args):
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
-            num_epoch = int(epoch / 10)
-            weight_name ="asam-o-{}.pth".format(num_epoch)
+            num_epoch = int(epoch / 5)
+            weight_name ="kl_test{}.pth".format(num_epoch)
             d_weight_name ="discriminator-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
-            
-        if epoch % args.val_interval == 0:
-            miou,moiou = evaluate(model=asam,data_loader=val_dataloader,device=device, epoch=epoch)
-            if rank == 0:
-                tags = ["miou","moiou",]
-                tb_writer.add_scalar(tags[0], miou, epoch)
-                tb_writer.add_scalar(tags[1], moiou, epoch)       
-
-
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:
             os.remove(checkpoint_path)
@@ -171,23 +148,17 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sam_checkpoint', type=str, default= "./checkpoint/sam_vit_l_0b3195.pth")
-    parser.add_argument('--asam_checkpoint', type=str, default= './checkpoint/asam-0.pth')
-    parser.add_argument('--discriminator_checkpoint', type=str, default="./checkpoint/sa1b_discriminator.pth")
-    parser.add_argument('--weight_savepath', type=str, default= "./checkpoint")
-    parser.add_argument('--train_data_dir',type=str,default="/data/SA1B-a")
-    parser.add_argument('--train_data_dir_o',type=str,default='/data/SA1B-o')
-    parser.add_argument('--train_data_num',type=int,default = 50000)
-    parser.add_argument('--train_batch_size', type=int, default = 2)
-    parser.add_argument('--epochs', type=int, default = 15)
-    parser.add_argument('--lr', type=float, default = 1e-4)    
-    parser.add_argument('--end_lr', type=float, default = 4e-5)    
-
-    #set val 
-    parser.add_argument('--val_data_dir',type=str,default="/data/SA1B-test-a")
-    parser.add_argument('--val_data_num',type=int,default = 2000)
-    parser.add_argument('--val_batch_size', type=int, default = 1)
-    parser.add_argument('--val_interval', type=int, default = 2)
+    parser.add_argument('--sam_checkpoint', type=str, default= "/home/ubuntu/anaconda3/envs/zb/code/segment-anything/checkpoint/sam_vit_l_0b3195.pth")
+    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')
+    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")
+    parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
+    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-3w-a")
+    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-3w-o')
+    parser.add_argument('--data_num',type=int,default = 20000)
+    parser.add_argument('--epochs', type=int, default = 40)
+    parser.add_argument('--batch-size', type=int, default = 1)
+    parser.add_argument('--lr', type=float, default = 5e-4)
+    parser.add_argument('--end_lr', type=float, default = 5e-5)
     # 是否启用SyncBatchNorm
     parser.add_argument('--syncBN', type=str2bool, default=False)
     parser.add_argument('--pretrain_use', type=str2bool, default=False)

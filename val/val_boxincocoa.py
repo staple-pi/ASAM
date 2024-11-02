@@ -215,9 +215,9 @@ def main(args):
                 occ_mask = annotation['invisible_mask']
                 omask = mask_utils.decode(occ_mask)
             else:
-                omask =   gt_mask - vmask      
-            if np.array_equal(vmask, gt_mask):
-                maskin = np.zeros_like(gt_mask)
+                omask =   gt_mask - vmask
+                maskin = np.zeros_like(gt_mask)    
+                
             visibel_mask[i]  =vmask     
             ground_truth_masks[i] = gt_mask
             occlusion_mask[i] = omask
