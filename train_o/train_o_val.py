@@ -23,7 +23,17 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o,evaluate,SA1BDataset_val
+from asam_utils_o_val import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o,evaluate,SA1BDataset_val
+
+def str2bool(v):
+    if isinstance(v,bool):
+        return v
+    if v.lower() in ('yes','true','t','y','1'):
+        return True
+    elif v.lower() in ('no','false','f','n','0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected')
 
 def main(args):
     if torch.cuda.is_available() is False:
@@ -166,21 +176,21 @@ if __name__ == '__main__':
     parser.add_argument('--weight_savepath', type=str, default= "./checkpoint")
     parser.add_argument('--train_data_dir',type=str,default="/data/SA1B-a")
     parser.add_argument('--train_data_dir_o',type=str,default='/data/SA1B-o')
-    parser.add_argument('--train_data_num',type=int,default = 75000)
+    parser.add_argument('--train_data_num',type=int,default = 50000)
     parser.add_argument('--train_batch_size', type=int, default = 2)
-    parser.add_argument('--epochs', type=int, default = 100)
-    parser.add_argument('--lr', type=float, default = 4e-5)    
-    parser.add_argument('--end_lr', type=float, default = 1e-5)    
+    parser.add_argument('--epochs', type=int, default = 15)
+    parser.add_argument('--lr', type=float, default = 1e-4)    
+    parser.add_argument('--end_lr', type=float, default = 4e-5)    
 
     #set val 
     parser.add_argument('--val_data_dir',type=str,default="/data/SA1B-test-a")
-    parser.add_argument('--val_data_num',type=int,default = 5000)
+    parser.add_argument('--val_data_num',type=int,default = 2000)
     parser.add_argument('--val_batch_size', type=int, default = 1)
-    parser.add_argument('--val_interval', type=int, default = 5)
+    parser.add_argument('--val_interval', type=int, default = 2)
     # 是否启用SyncBatchNorm
-    parser.add_argument('--syncBN', type=bool, default=False)
-    parser.add_argument('--pretrain_use', type=bool, default=False)
-    parser.add_argument('--freeze-layers', type=bool, default=False)
+    parser.add_argument('--syncBN', type=str2bool, default=False)
+    parser.add_argument('--pretrain_use', type=str2bool, default=False)
+    parser.add_argument('--freeze-layers', type=str2bool, default=False)
     # 不要改该参数，系统会自动分配
     parser.add_argument('--device', default='cuda', help='device id (i.e. 0 or 0,1 or cpu)')
     # 开启的进程数(注意不是线程),不用设置该参数，会根据nproc_per_node自动设置
