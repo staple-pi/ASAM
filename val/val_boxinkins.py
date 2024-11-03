@@ -168,6 +168,7 @@ def main(args):
     print(num_range)
     batch_no = 0
     total_num = 0
+    totalocc_num=0 
     total_ious = 0.
     total_occlu_ious = 0.
     while batch_no < 1000:
@@ -179,8 +180,10 @@ def main(args):
         ious = 0.
         occl_ious = 0.
         instance_num = 0
+        num_occ = 0 
         img_size={}
         image_path = {}
+        no_occ={}
         print(batch_no)
         for i in range(batch_no, batch_no+50):
             annotation = annotations_list[i]
@@ -202,6 +205,9 @@ def main(args):
                 maskin = maskin - imask     ##################################################################################
             if a_polys==i_polys:
                 maskin = np.zeros_like(amask)
+                no_occ[i] == True
+            else:
+                no_occ[i] == False
             omask = np.bitwise_xor(amask,imask)
             visibel_mask[i]  =imask     
             ground_truth_masks[i] = amask
@@ -239,13 +245,16 @@ def main(args):
             ious = ious +iou
             instance_num = instance_num + 1
             total_num = total_num + 1
+            if no_occ[i] == False:   #表示没有遮挡
+                num_occ+=1
+                totalocc_num+=1
             occlusion_pred = torch.tensor(np.bitwise_xor(masks_pred[0], visibel_mask[k]),dtype=torch.bool)
             occlusion_gt = torch.tensor(np.bitwise_and(gt_binary_mask, occlusion_mask[k]),dtype=torch.bool)
             occlusion_iou = calculate_iou(occlusion_pred, occlusion_gt)
             occl_ious = occl_ious + occlusion_iou
 
         mIoU = (ious / instance_num).float()
-        occlu_mIoU = (occl_ious / instance_num).float()
+        occlu_mIoU = (occl_ious / num_occ).float()
         print('miou'+ str(mIoU))
         print('occlu_miou'+ str(occlu_mIoU))
 
@@ -254,7 +263,7 @@ def main(args):
         batch_no = batch_no + 50
 
     mIoU = (total_ious / total_num).float()
-    occlu_mIoU = (total_occlu_ious / total_num).float()
+    occlu_mIoU = (total_occlu_ious / totalocc_num).float()
     print('miou'+ str(mIoU))
     print('occlu_miou'+ str(occlu_mIoU))
 
