@@ -165,7 +165,7 @@ def main(args):
         i=0
         while i < len(annotations_list):
             keys = annotations_list[i].keys()
-            if 'invisible_mask' not in keys:
+            if annotations_list[i]['occlude_rate'] ==0:
                 del annotations_list[i]
             else:
                 i += 1
@@ -196,9 +196,7 @@ def main(args):
             height, width = image_info['height'], image_info['width']
             image_path[i] = os.path.join(image_dir,image_name)
             origin_size = (height,width)
-            a_polys = annotation['segmentation']
-            a_polys = [a_polys]
-            gt_mask = polys_to_mask(a_polys,height,width)
+            gt_mask = mask_utils.decode(annotation['segmentation'])
             x1,y1,x2,y2 = mask_to_bbox(gt_mask)
             box = np.array([x1,y1,x2,y2])
             bbox_coords[i] = box
@@ -215,9 +213,10 @@ def main(args):
                 occ_mask = annotation['invisible_mask']
                 omask = mask_utils.decode(occ_mask)
             else:
-                omask =   gt_mask - vmask
-                maskin = np.zeros_like(gt_mask)    
-                
+                omask =  np.zeros_like(gt_mask)     
+            if annotation['occlude_rate'] < 0.1:
+                maskin = np.zeros_like(gt_mask)
+                omask = np.zeros_like(gt_mask)    
             visibel_mask[i]  =vmask     
             ground_truth_masks[i] = gt_mask
             occlusion_mask[i] = omask
@@ -276,8 +275,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--asam_checkpoint', type=str, default= "E:/code/asam-2w-0.pth")   # train_o weight 的地址
-    parser.add_argument('--img_dir',type=str,default='E:/code/COCOA/val2014')      # KINS-test的地址
-    parser.add_argument('--annotations_path',type=str,default= 'E:/code/COCOA/annotations/my_COCOA_val.json')
+    parser.add_argument('--img_dir',type=str,default='E:/code/COCOA/val2014')      # COCOA-val的地址
+    parser.add_argument('--annotations_path',type=str,default= 'E:/code/COCOA/annotations/COCO_amodal_val2014_with_classes.json')
     parser.add_argument('--minus_v',type=str2bool,default=True)
     parser.add_argument('--moiou',type=str2bool,default=True)
     opt = parser.parse_args()
