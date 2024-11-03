@@ -303,7 +303,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         o_pred = asam_pred - vmask
         o_gt = gt_mask - vmask
         
-        dloss0 = 0.5*(seg_loss(asam_pred, gt_mask))# + seg_loss(asam_pred, gt_mask) )
+        dloss0 = 0.5*(seg_loss(asam_pred, gt_mask))# + seg_loss(o_pred, o_gt.float) )
         
         asam_pred_s = torch.sigmoid(asam_pred)
         gt_binary_mask1 = torch.as_tensor(gt_mask > 0,dtype=torch.float32)
