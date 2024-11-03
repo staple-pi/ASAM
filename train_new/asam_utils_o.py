@@ -303,7 +303,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         o_pred = asam_pred - vmask
         o_gt = gt_mask - vmask
         
-        dloss0 = 0.5*(seg_loss(o_pred,o_gt) + seg_loss(asam_pred, gt_mask) )
+        dloss0 = 0.5*(seg_loss(o_pred,o_gt))# + seg_loss(asam_pred, gt_mask) )
         
         asam_pred_s = torch.sigmoid(asam_pred)
         gt_binary_mask1 = torch.as_tensor(gt_mask > 0,dtype=torch.float32)
@@ -312,7 +312,7 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
         o_binary_mask = torch.as_tensor(o_gt > 0,dtype=torch.float32)
         
         bloss0 = 20 * mse_loss(o_pred_s,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
-        bloss1 = 10 * ce_loss(asam_pred, gt_mask.float()) + 20 * ce_loss(o_pred, o_gt.float()) 
+        bloss1 = 10 * ce_loss(asam_pred, gt_mask.float())# + 20 * ce_loss(o_pred, o_gt.float()) 
         
         v_feature = image_feature * v_64 #[1,256,64,64]
         o_feature = image_feature * o_64
