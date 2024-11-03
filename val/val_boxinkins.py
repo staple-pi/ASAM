@@ -173,7 +173,7 @@ def main(args):
     totalocc_num=0 
     total_ious = 0.
     total_occlu_ious = 0.
-    while batch_no < 1000:
+    while batch_no < 5000:
         bbox_coords = {}
         occlusion_mask = {}
         ground_truth_masks = {}

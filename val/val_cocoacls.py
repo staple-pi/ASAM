@@ -179,7 +179,7 @@ def main(args):
     totalocc_num=0 
     total_ious = 0.
     total_occlu_ious = 0.
-    while batch_no < 2000:
+    while batch_no < 5000:
         bbox_coords = {}
         occlusion_mask = {}
         ground_truth_masks = {}
@@ -279,9 +279,9 @@ def main(args):
         batch_no = batch_no + 50
 
     mIoU = (total_ious / total_num).float()
-    occlu_mIoU = (total_occlu_ious / total_num).float()
+    occlu_mIoU = (total_occlu_ious / totalocc_num).float()
     print('miou'+ str(mIoU))
-    print('occlu_miou'+ str(totalocc_num))
+    print('occlu_miou'+ str(occlu_mIoU))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
