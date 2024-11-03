@@ -154,6 +154,7 @@ def main(args):
     with open(annotations_path,'r') as f:
         data = json.load(f)
     annotations_list =  data['annotations']
+    '''
     if args.moiou:
         i=0
         while i < len(annotations_list):
@@ -163,6 +164,7 @@ def main(args):
                 del annotations_list[i]
             else:
                 i += 1
+    '''            
     lenth_of_imglist = len(annotations_list)
     num_range = lenth_of_imglist
     print(num_range)
@@ -273,7 +275,6 @@ if __name__ == '__main__':
     parser.add_argument('--img_dir',type=str,default='E:/code/KINS/testing/image_2')      # KINS-test的地址
     parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
     parser.add_argument('--minus_v',type=str2bool,default=True)
-    parser.add_argument('--moiou',type=str2bool,default=False)
     opt = parser.parse_args()
     print("minus_v:", opt.minus_v, "moiou:", opt.moiou)
     main(opt)
