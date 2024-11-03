@@ -290,5 +290,5 @@ if __name__ == '__main__':
     parser.add_argument('--annotations_path',type=str,default= 'E:/code/COCOA/annotations/COCO_amodal_val2014_with_classes.json')
     parser.add_argument('--minus_v',type=str2bool,default=True)
     opt = parser.parse_args()
-    print("minus_v:", opt.minus_v, "moiou:", opt.moiou)
+    print("minus_v:", opt.minus_v)
     main(opt)

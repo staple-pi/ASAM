@@ -276,5 +276,5 @@ if __name__ == '__main__':
     parser.add_argument('--annotations_path',type=str,default='E:/code/KINS/annotations/update_test_2020.json')
     parser.add_argument('--minus_v',type=str2bool,default=True)
     opt = parser.parse_args()
-    print("minus_v:", opt.minus_v, "moiou:", opt.moiou)
+    print("minus_v:", opt.minus_v)
     main(opt)
