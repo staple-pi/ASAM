@@ -247,7 +247,7 @@ def main(args):
             ious = ious +iou
             instance_num = instance_num + 1
             total_num = total_num + 1
-            if no_occ[i] == False:   #表示没有遮挡
+            if no_occ[k] == False:   #表示没有遮挡
                 num_occ+=1
                 totalocc_num+=1
             occlusion_pred = torch.tensor(np.bitwise_xor(masks_pred[0], visibel_mask[k]),dtype=torch.bool)
