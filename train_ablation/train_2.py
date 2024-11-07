@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--sam_checkpoint', type=str, default= "/home/ubuntu/anaconda3/envs/zb/code/segment-anything/checkpoint/sam_vit_l_0b3195.pth")
     parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')                                                 #不使用权重
-    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")                            #使用最初的权重
+    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")                            #随便改不改，已消融
     parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
     parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-a")
     parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-o')
