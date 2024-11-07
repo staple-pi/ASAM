@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o
+from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_2
 
 def str2bool(v):
     if isinstance(v,bool):
@@ -53,10 +53,7 @@ def main(args):
     #args.lr *= args.world_size  # 学习率要根据并行GPU的数量进行倍增
     #set model
     model_type = "vit_l"
-    sam_model_o = sam_model_registry_o[model_type](checkpoint=args.sam_checkpoint)
-    sam_o = SAM_o(model=sam_model_o).to(device=device)
     asam_model = sam_model_registry[model_type](checkpoint=None)
-    
     pretrained_state_dict = torch.load(args.sam_checkpoint)
     train_layers=[]
     if args.pretrain_use:
@@ -97,12 +94,7 @@ def main(args):
 
     asam = ASAM(model=asam_model).to(device=device)
     asam.train()
-    d_model = MaskDiscriminator().to(device=device)
-    d_model_weight=torch.load(args.discriminator_checkpoint, map_location=device)
-    d_model.load_state_dict(d_model_weight,strict=False)
-    d_model.train()
     asam = torch.nn.parallel.DistributedDataParallel(asam, device_ids=[args.gpu],find_unused_parameters=True)
-    d_model = torch.nn.parallel.DistributedDataParallel(d_model, device_ids=[args.gpu],broadcast_buffers=False)
     #set dataset
     img_list = os.listdir(args.data_dir)    
     img_list = [img for img in img_list if img.endswith(".jpg")]
@@ -121,24 +113,19 @@ def main(args):
         num_workers=nw,
         )
     optimizer = torch.optim.AdamW(params,lr=args.lr,weight_decay=0.001)
-    optimizer_d = torch.optim.Adam(d_model.parameters(),lr=args.lr,weight_decay=0.001)
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
-    scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=args.end_lr)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
+        mean_loss = train_one_epoch_2(asam,train_dataloader, epoch, optimizer, device, args.batch_size, tb_writer)
         scheduler.step()
-        scheduler2.step()
         if rank == 0:
             tags = ["loss","learning_rate"]
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 5)
-            weight_name ="abalation1{}.pth".format(num_epoch)
-            d_weight_name ="discriminator-abalation1-{}.pth".format(num_epoch)
+            weight_name ="ablation2{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
-            torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:
             os.remove(checkpoint_path)
@@ -149,19 +136,19 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--sam_checkpoint', type=str, default= "/home/ubuntu/anaconda3/envs/zb/code/segment-anything/checkpoint/sam_vit_l_0b3195.pth")
-    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')                                                 #用15epoch训好的5w
-    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")                            #用15epoch训好的discriminator
+    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')                                                 #不使用权重
+    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")                            #使用最初的权重
     parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
     parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-3w-a")
     parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-3w-o')
     parser.add_argument('--data_num',type=int,default = 50000)
-    parser.add_argument('--epochs', type=int, default = 5)
+    parser.add_argument('--epochs', type=int, default = 20)
     parser.add_argument('--batch-size', type=int, default = 1)
-    parser.add_argument('--lr', type=float, default = 2e-4)
-    parser.add_argument('--end_lr', type=float, default = 5e-5)
+    parser.add_argument('--lr', type=float, default = 8e-4)
+    parser.add_argument('--end_lr', type=float, default = 8e-5)
     # 是否启用SyncBatchNorm
     parser.add_argument('--syncBN', type=str2bool, default=False)
-    parser.add_argument('--pretrain_use', type=str2bool, default=True)
+    parser.add_argument('--pretrain_use', type=str2bool, default=False)
     parser.add_argument('--freeze-layers', type=str2bool, default=False)
     # 不要改该参数，系统会自动分配
     parser.add_argument('--device', default='cuda', help='device id (i.e. 0 or 0,1 or cpu)')
