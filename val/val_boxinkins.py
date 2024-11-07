@@ -207,9 +207,9 @@ def main(args):
                 maskin = maskin - imask     ##################################################################################
             if a_polys==i_polys:
                 maskin = np.zeros_like(amask)
-                no_occ[i] == True
+                no_occ[i] = True
             else:
-                no_occ[i] == False
+                no_occ[i] = False
             omask = np.bitwise_xor(amask,imask)
             visibel_mask[i]  =imask     
             ground_truth_masks[i] = amask

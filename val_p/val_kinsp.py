@@ -214,9 +214,9 @@ def main(args):
                 maskin = maskin - imask     ##################################################################################
             if a_polys==i_polys:
                 maskin = np.zeros_like(amask)
-                no_occ[i] == True
+                no_occ[i] = True
             else:
-                no_occ[i] == False
+                no_occ[i] = False
             points_1 = np.argwhere(imask == 1)  
             if len(points_1) == 0:
                 vmask = amask
