@@ -367,6 +367,75 @@ def train_one_epoch_o(asam_model,sam_o, d_model, train_dataloader,epoch,optimize
 
     return mean_loss
 
+def train_one_epoch_1(asam_model, d_model, train_dataloader,epoch,optimizer, optimizer_d, device,batch_size,writer):  ###################
+
+    #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
+    seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
+    ce_loss = nn.BCEWithLogitsLoss(reduction="mean")
+    mse_loss = torch.nn.MSELoss()
+    loss_d = torch.nn.BCELoss()
+    mean_loss = torch.zeros(1).to(device)
+    mean_dloss0 = torch.zeros(1).to(device)
+    mean_bloss0 = torch.zeros(1).to(device)
+    mean_gloss = torch.zeros(1).to(device)
+    mean_diloss = torch.zeros(1).to(device)
+    asam_model.train()
+    if is_main_process():
+        train_dataloader = tqdm(train_dataloader, file=sys.stdout)
+        #input_image[0], input_image_o[0], bbox_torch, gt_mask, v_mask, occluder_mask,v_64,o_64
+    for step, (input_image, input_image_o, bbox_torch, gt_mask, vmask,occluder_mask, v_64, o_64) in enumerate(train_dataloader):
+        optimizer.zero_grad()
+        image, image_o, bbox,gt_mask = input_image.to(device),input_image_o.to(device), bbox_torch.to(device),gt_mask.to(device)
+        occluder_mask, vmask, v_64, o_64 = occluder_mask.to(device), vmask.to(device), v_64.to(device), o_64.to(device)
+        asam_pred, image_feature , asam_features = asam_model(image, bbox, occluder_mask)#[0]
+        o_pred = asam_pred - vmask
+        o_gt = gt_mask - vmask
+        
+        dloss0 = 0.5*(seg_loss(asam_pred, gt_mask))# + seg_loss(o_pred, o_gt.float) )
+        
+        asam_pred_s = torch.sigmoid(asam_pred)
+        gt_binary_mask1 = torch.as_tensor(gt_mask > 0,dtype=torch.float32)
+        vi_binary_mask = torch.as_tensor(vmask > 0,dtype=torch.float32)
+        o_pred_s = asam_pred_s - vi_binary_mask
+        o_binary_mask = torch.as_tensor(o_gt > 0,dtype=torch.float32)
+        
+        bloss0 = 20 * mse_loss(o_pred_s,o_binary_mask)+ 10 *mse_loss(asam_pred_s,gt_binary_mask1)
+        #bloss1 = 10 * ce_loss(asam_pred, gt_mask.float())# + 20 * ce_loss(o_pred, o_gt.float()) 
+        
+        g_loss = loss_d(d_model(image_o,asam_pred), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
+        loss = dloss0 + bloss0  + g_loss
+        
+        loss.backward()
+        loss = reduce_value(loss, average=True)
+        dloss0 = reduce_value(dloss0, average=True)
+        bloss0 = reduce_value(bloss0, average=True)
+        g_loss = reduce_value(g_loss, average=True)
+        
+        mean_loss = (mean_loss * step + loss.detach()) / (step + 1)  # update mean losses
+        mean_dloss0 = (mean_dloss0 * step + dloss0.detach()) / (step + 1)  # update mean losses
+        mean_bloss0 = (mean_bloss0 * step + bloss0.detach()) / (step + 1)  # update mean losses
+        mean_gloss = (mean_gloss * step + g_loss.detach()) / (step + 1)  # update mean losses
+        
+        if is_main_process():
+            writer.add_scalar('Loss/sample', loss.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('floss/sample', dloss0.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('bloss0/sample', bloss0.item(), epoch * len(train_dataloader) + step)
+            writer.add_scalar('g_loss/sample', g_loss.item(), epoch * len(train_dataloader) + step) 
+        #torch.nn.utils.clip_grad_norm_(asam_model.parameters(), max_norm=1.0)
+        optimizer.step()
+        optimizer_d.zero_grad()
+        d_loss = 0.5*loss_d(d_model(image_o,gt_mask), torch.ones(size=(batch_size,1),device=device,requires_grad=True)) + loss_d(d_model(image_o,asam_pred.detach()), torch.zeros(size=(batch_size,1),device=device,requires_grad=True))
+        d_loss = reduce_value(d_loss, average=True)
+        mean_diloss = (mean_diloss * step + d_loss.detach()) / (step + 1)  # update mean losses
+        d_loss.backward()
+        optimizer_d.step()
+        
+        if is_main_process():
+            train_dataloader.desc = "[epoch {}] mean loss {},dloss0 {},bloss0 {}, mloss {},gloss {},klloss {},diloss {}".format(epoch, round(mean_loss.item(), 4),
+                                    round(mean_dloss0.item(), 4),round(mean_bloss0.item(), 4),
+                                    round(mean_gloss.item(), 4),round(mean_diloss.item(),4))        
+
+    return mean_loss
 
 class SA1BDataset(Dataset):
     def __init__(

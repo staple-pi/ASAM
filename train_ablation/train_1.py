@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_o
+from asam_utils_o import init_distributed_mode, weights_init, SAM_o, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_one_epoch_1
 
 def str2bool(v):
     if isinstance(v,bool):
@@ -53,10 +53,7 @@ def main(args):
     #args.lr *= args.world_size  # 学习率要根据并行GPU的数量进行倍增
     #set model
     model_type = "vit_l"
-    sam_model_o = sam_model_registry_o[model_type](checkpoint=args.sam_checkpoint)
-    sam_o = SAM_o(model=sam_model_o).to(device=device)
     asam_model = sam_model_registry[model_type](checkpoint=None)
-    
     pretrained_state_dict = torch.load(args.sam_checkpoint)
     train_layers=[]
     if args.pretrain_use:
@@ -126,7 +123,7 @@ def main(args):
     scheduler2 = CosineAnnealingLR(optimizer_d,T_max=args.epochs,eta_min=args.end_lr)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_one_epoch_o(asam, sam_o, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
+        mean_loss = train_one_epoch_1(asam, d_model,train_dataloader, epoch, optimizer, optimizer_d, device, args.batch_size, tb_writer)
         scheduler.step()
         scheduler2.step()
         if rank == 0:
@@ -135,8 +132,8 @@ def main(args):
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 5)
-            weight_name ="all_use{}.pth".format(num_epoch)
-            d_weight_name ="discriminator-all_use-{}.pth".format(num_epoch)
+            weight_name ="kl_test{}.pth".format(num_epoch)
+            d_weight_name ="discriminator-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
     if rank == 0:
