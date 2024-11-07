@@ -152,8 +152,8 @@ if __name__ == '__main__':
     parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')                                                 #用15epoch训好的5w
     parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")                            #用15epoch训好的discriminator
     parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
-    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-3w-a")
-    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-3w-o')
+    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-a")
+    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-o')
     parser.add_argument('--data_num',type=int,default = 50000)
     parser.add_argument('--epochs', type=int, default = 5)
     parser.add_argument('--batch-size', type=int, default = 1)
