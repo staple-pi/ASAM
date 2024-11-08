@@ -431,7 +431,7 @@ def train_one_epoch_1(asam_model, d_model, train_dataloader,epoch,optimizer, opt
         optimizer_d.step()
         
         if is_main_process():
-            train_dataloader.desc = "[epoch {}] mean loss {},dloss0 {},bloss0 {}, mloss {},gloss {},klloss {},diloss {}".format(epoch, round(mean_loss.item(), 4),
+            train_dataloader.desc = "[epoch {}] mean loss {},dloss0 {},bloss0 {},gloss {},diloss {}".format(epoch, round(mean_loss.item(), 4),
                                     round(mean_dloss0.item(), 4),round(mean_bloss0.item(), 4),
                                     round(mean_gloss.item(), 4),round(mean_diloss.item(),4))        
 
