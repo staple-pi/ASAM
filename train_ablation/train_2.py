@@ -123,8 +123,8 @@ def main(args):
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
-            num_epoch = int(epoch / 5)
-            weight_name ="ablation2{}.pth".format(num_epoch)
+            num_epoch = int(epoch / 2)
+            weight_name ="ablation3-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:

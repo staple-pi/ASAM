@@ -135,7 +135,7 @@ def main(args):
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 5)
-            weight_name ="abalation1{}.pth".format(num_epoch)
+            weight_name ="abalation1-{}.pth".format(num_epoch)
             d_weight_name ="discriminator-abalation1-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))

@@ -134,9 +134,9 @@ def main(args):
             tb_writer.add_scalar(tags[0], mean_loss, epoch)
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
-            num_epoch = int(epoch / 5)
-            weight_name ="kl_test{}.pth".format(num_epoch)
-            d_weight_name ="discriminator-{}.pth".format(num_epoch)
+            num_epoch = int(epoch / 1)
+            weight_name ="asam-20w-{}.pth".format(num_epoch)
+            d_weight_name ="discriminator-20w-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
     if rank == 0:
@@ -149,19 +149,19 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--sam_checkpoint', type=str, default= "/home/ubuntu/anaconda3/envs/zb/code/segment-anything/checkpoint/sam_vit_l_0b3195.pth")
-    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')
-    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")
+    parser.add_argument('--asam_checkpoint', type=str, default= '/data1/zb/checkpoint/asam-0.pth')                          # 加载11/6号左右训的10w的权重
+    parser.add_argument('--discriminator_checkpoint', type=str, default="/data1/zb/checkpoint/sa1b_discriminator1.pth")     # 加载11/6号左右训的10w的权重
     parser.add_argument('--weight_savepath', type=str, default= "/data1/zb/checkpoint")
-    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-3w-a")
-    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-3w-o')
-    parser.add_argument('--data_num',type=int,default = 20000)
-    parser.add_argument('--epochs', type=int, default = 40)
+    parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-a")
+    parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-o')
+    parser.add_argument('--data_num',type=int,default = 200000)
+    parser.add_argument('--epochs', type=int, default = 10)
     parser.add_argument('--batch-size', type=int, default = 1)
     parser.add_argument('--lr', type=float, default = 5e-4)
     parser.add_argument('--end_lr', type=float, default = 5e-5)
     # 是否启用SyncBatchNorm
     parser.add_argument('--syncBN', type=str2bool, default=False)
-    parser.add_argument('--pretrain_use', type=str2bool, default=False)
+    parser.add_argument('--pretrain_use', type=str2bool, default=False)   
     parser.add_argument('--freeze-layers', type=str2bool, default=False)
     # 不要改该参数，系统会自动分配
     parser.add_argument('--device', default='cuda', help='device id (i.e. 0 or 0,1 or cpu)')
