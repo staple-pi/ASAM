@@ -105,7 +105,7 @@ class ImageEncoderViT(nn.Module):
         )
 ########################
 
-        
+        '''
         self.gated_conv1 = nn.Sequential(
             GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
@@ -131,7 +131,7 @@ class ImageEncoderViT(nn.Module):
         self.gated_conv1 = ThreeLayerConvNet()
         self.gated_conv2 = ThreeLayerConvNet()
         self.gated_conv3 = ThreeLayerConvNet()
-        '''
+        
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 1024, kernel_size=16, stride=16),
         )
