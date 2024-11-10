@@ -104,13 +104,15 @@ class ImageEncoderViT(nn.Module):
             LayerNorm2d(out_chans),
         )
 ########################
+
+        '''
         self.gated_conv1 = nn.Sequential(
             GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
         )
-
+        
         self.gated_conv2 = nn.Sequential(
             GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
@@ -123,7 +125,12 @@ class ImageEncoderViT(nn.Module):
             GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
-        )
+        )   
+        
+        ''' 
+        self.gated_conv1 = ThreeLayerConvNet()
+        self.gated_conv2 = ThreeLayerConvNet()
+        self.gated_conv3 = ThreeLayerConvNet()
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 1024, kernel_size=16, stride=16),
         )
@@ -444,6 +451,22 @@ class PatchEmbed(nn.Module):
         x = self.proj(x)
         # B C H W -> B H W C
         x = x.permute(0, 2, 3, 1)
+        return x
+
+class ThreeLayerConvNet(nn.Module):
+    def __init__(self):
+        super(ThreeLayerConvNet, self).__init__()
+        # 定义三层卷积网络
+        self.conv1 = nn.Conv2d(in_channels=2048, out_channels=1024, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=1024, out_channels=512, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, padding=1)
+        # 定义激活函数
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        x = self.relu(self.conv1(x))
+        x = self.relu(self.conv2(x))
+        x = self.relu(self.conv3(x))
         return x
 
 

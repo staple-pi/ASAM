@@ -230,7 +230,7 @@ def main(args):
                 maskin = np.zeros_like(gt_mask)
                 omask = np.zeros_like(gt_mask)    
             else:
-                no_occ[i] == False
+                no_occ[i] = False
             visibel_mask[i]  =vmask     
             ground_truth_masks[i] = gt_mask
             occlusion_mask[i] = omask
