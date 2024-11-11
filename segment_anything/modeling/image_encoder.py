@@ -127,11 +127,11 @@ class ImageEncoderViT(nn.Module):
             #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
         )   
         
-        ''' '''
+        ''' 
         self.gated_conv1 = ThreeLayerConvNet()
         self.gated_conv2 = ThreeLayerConvNet()
         self.gated_conv3 = ThreeLayerConvNet()
-        
+        '''
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 1024, kernel_size=16, stride=16),
         )
