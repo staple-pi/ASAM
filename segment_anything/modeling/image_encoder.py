@@ -146,7 +146,6 @@ class ImageEncoderViT(nn.Module):
         if self.pos_embed is not None:
             x = x + self.pos_embed
         i = 0
-        outputs = []
         for blk in self.blocks:
             if i ==1:
                 x = blk(x)
@@ -154,26 +153,23 @@ class ImageEncoderViT(nn.Module):
                 y = torch.cat((y,mask_downscaled),dim=1)
                 y = self.gated_conv1(y)
                 x = x + y.permute(0,2,3,1)
-                outputs.append(x)
             elif i ==10:
                 x = blk(x)
                 y = x.permute(0,3,1,2)
                 y = torch.cat((y,mask_downscaled),dim=1)
                 y = self.gated_conv2(y)
                 x = x + y.permute(0,2,3,1)
-                outputs.append(x)
             elif i ==22:
                 x = blk(x)
                 y = x.permute(0,3,1,2)
                 y = torch.cat((y,mask_downscaled),dim=1)
                 y = self.gated_conv2(y)
                 x = x + y.permute(0,2,3,1)
-                outputs.append(x)     
             else:
                 x = blk(x)
             i += 1
         x = self.neck(x.permute(0, 3, 1, 2))
-        return x , outputs
+        return x 
 
 
 class Block(nn.Module):
