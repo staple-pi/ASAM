@@ -390,7 +390,7 @@ class SA1BDataset(Dataset):
         #gt_mask = gt_mask[None, :, :, :] 
         x, y, w, h = annotation['bbox']
         bbox = np.array([x, y, x + w, y + h])
-        maskin = box_to_mask(bbox,segmentation.shape)
+        maskin = box_to_mask(bbox, segmentation.shape)
         bbox = self._transform.apply_boxes(bbox, origin_size)
         bbox_torch = torch.as_tensor(bbox, dtype=torch.float)
         # maskin
