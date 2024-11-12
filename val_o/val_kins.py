@@ -91,8 +91,8 @@ def box_to_mask(box,mask_shape):
     box_width = box[2] - box[0]
     box_height = box[3] - box[1]
     # 计算扩展的大小
-    expand_width = int(box_width * 0.2)
-    expand_height = int(box_height * 0.2)
+    expand_width = int(box_width * 0.15)
+    expand_height = int(box_height * 0.15)
     # 更新box的坐标，并确保不超过mask的边界
     new_x1 = int(max(0, box[0] - expand_width))
     new_y1 = int(max(0, box[1] - expand_height))
