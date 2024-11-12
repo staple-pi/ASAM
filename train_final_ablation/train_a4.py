@@ -144,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-a")      #shiyon
     parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-o')
     parser.add_argument('--data_num',type=int,default = 40000)          #使用4w数据量
-    parser.add_argument('--epochs', type=int, default = 18)
+    parser.add_argument('--epochs', type=int, default = 15)
     parser.add_argument('--batch-size', type=int, default = 1)
     parser.add_argument('--lr', type=float, default = 8e-4)
     parser.add_argument('--end_lr', type=float, default = 5e-5)
