@@ -134,7 +134,7 @@ def main(args):
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 2)
-            weight_name ="asam-5w-{}.pth".format(num_epoch)
+            weight_name ="asam-ablation3-{}.pth".format(num_epoch)
             d_weight_name ="discriminator-5w-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
             torch.save(d_model.module.state_dict(), os.path.join(args.weight_savepath, d_weight_name))
@@ -153,8 +153,8 @@ if __name__ == '__main__':
     parser.add_argument('--weight_savepath', type=str, default= "/data/checkpoint")
     parser.add_argument('--data_dir',type=str,default="/data1/zb/SA1B-a")      #shiyon
     parser.add_argument('--data_dir_o',type=str,default='/data1/zb/SA1B-o')
-    parser.add_argument('--data_num',type=int,default = 50000)          #使用5w数据量
-    parser.add_argument('--epochs', type=int, default = 25)
+    parser.add_argument('--data_num',type=int,default = 40000)          #使用5w数据量
+    parser.add_argument('--epochs', type=int, default = 18)
     parser.add_argument('--batch-size', type=int, default = 1)
     parser.add_argument('--lr', type=float, default = 8e-4)
     parser.add_argument('--end_lr', type=float, default = 5e-5)
