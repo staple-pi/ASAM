@@ -227,7 +227,7 @@ class SamPredictor:
         )
 
         #image_embeddings = self.model.embedding_encoder(self.features,mask_input)   #######################################
-        image_embeddings = self.model.image_encoder(self.input_image_zb,mask_input)   #######################################
+        image_embeddings = self.model.image_encoder(self.input_image_zb)   #######################################
         # Predict masks
         low_res_masks, iou_predictions = self.model.mask_decoder(
             #image_embeddings=self.features,
@@ -236,6 +236,7 @@ class SamPredictor:
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
+            maskin = mask_input
         )
 
         # Upscale the masks to the original image resolution
