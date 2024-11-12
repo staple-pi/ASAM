@@ -69,45 +69,6 @@ def calculate_iou(pred, gt):
     iou = intersection / union
     return iou
 
-def calculate_AP(pred, gt):
-    true_positives = torch.logical_and(pred, gt).sum().float()
-    true_in_pred_false_in_ge = pred & ~gt
-    false_positives = torch.sum(true_in_pred_false_in_ge).float()
-    total_positives = gt.sum().float()
-    precision = true_positives / (true_positives + false_positives)
-    recall = true_positives / total_positives
-    if precision > 0 or recall > 0:
-        ap += (recall - 0) * precision
-
-    return ap
-
-def calculate_average_precision(preds, gts, iou_threshold=0.5):
-    num_instances = len(preds)
-    ap = 0.0
-
-    for i in range(num_instances):
-        pred = preds[i]
-        gt = gts[i]
-        iou = calculate_iou(pred, gt)
-
-        # 如果IoU大于阈值，则该预测被视为正确，否则为错误
-        is_correct = iou >= iou_threshold
-
-        # 计算精度和召回率
-        true_positives = is_correct.sum().float()
-        false_positives = (~is_correct).sum().float()
-        total_positives = gt.sum().float()
-
-        precision = true_positives / (true_positives + false_positives)
-        recall = true_positives / total_positives
-
-        # 使用梯形法则计算AP
-        if precision > 0 or recall > 0:
-            ap += (recall - 0) * precision
-
-    # 将AP除以实例数量得到平均精度
-    ap /= num_instances
-    return ap
 
 def polys_to_mask(polygons, height, width):
 	rles = mask_utils.frPyObjects(polygons, height, width)
