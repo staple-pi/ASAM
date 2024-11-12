@@ -7,14 +7,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
 from typing import Optional, Tuple, Type
 
 from .common import LayerNorm2d, MLPBlock
 
 
 # This class and its supporting functions below lightly adapted from the ViTDet backbone available at: https://github.com/facebookresearch/detectron2/blob/main/detectron2/modeling/backbone/vit.py # noqa
-class ImageEncoderViT(nn.Module):
+class StableImageEncoderViT(nn.Module):
     def __init__(
         self,
         img_size: int = 1024,
@@ -33,7 +33,6 @@ class ImageEncoderViT(nn.Module):
         rel_pos_zero_init: bool = True,
         window_size: int = 0,
         global_attn_indexes: Tuple[int, ...] = (),
-        activation: Type[nn.Module] = nn.GELU,######################
     ) -> None:
         """
         Args:
@@ -103,73 +102,16 @@ class ImageEncoderViT(nn.Module):
             ),
             LayerNorm2d(out_chans),
         )
-########################
 
-        
-        self.gated_conv1 = nn.Sequential(
-            GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
-        )
-        
-        self.gated_conv2 = nn.Sequential(
-            GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
-        )
-
-        self.gated_conv3 = nn.Sequential(
-            GatedConv2dWithActivation(in_channels = 2048, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 1024, out_channels = 512, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            GatedConv2dWithActivation(in_channels = 512, out_channels = 1024, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
-            #GatedDeConv2dWithActivation(2, 1024, 1024, 3, 1, padding=get_pad(64, 3, 1)),   
-        )   
-        
-        ''' 
-        self.gated_conv1 = ThreeLayerConvNet()
-        self.gated_conv2 = ThreeLayerConvNet()
-        self.gated_conv3 = ThreeLayerConvNet()
-        '''
-        self.mask_downscaling = nn.Sequential(
-            nn.Conv2d(1, 1024, kernel_size=16, stride=16),
-        )
-    def get_pad(self,in_:int, ksize:int, stride:int, atrous:int=1)->int:
-        out_ = np.ceil(float(in_)/stride)
-        return int(((out_ - 1) * stride + atrous*(ksize-1) +1 - in_)/2)
-################
-        
-    def forward(self, x: torch.Tensor, mask:torch.Tensor) -> torch.Tensor:   ###################
-        mask_downscaled = self.mask_downscaling(mask)   ############
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.patch_embed(x)
         if self.pos_embed is not None:
             x = x + self.pos_embed
-        i = 0
         for blk in self.blocks:
-            if i ==1:
-                x = blk(x)
-                y = x.permute(0,3,1,2)
-                y = torch.cat((y,mask_downscaled),dim=1)
-                y = self.gated_conv1(y)
-                x = x + y.permute(0,2,3,1)
-            elif i ==10:
-                x = blk(x)
-                y = x.permute(0,3,1,2)
-                y = torch.cat((y,mask_downscaled),dim=1)
-                y = self.gated_conv2(y)
-                x = x + y.permute(0,2,3,1)
-            elif i ==22:
-                x = blk(x)
-                y = x.permute(0,3,1,2)
-                y = torch.cat((y,mask_downscaled),dim=1)
-                y = self.gated_conv2(y)
-                x = x + y.permute(0,2,3,1)
-            else:
-                x = blk(x)
-            i += 1
+            x = blk(x)
         x = self.neck(x.permute(0, 3, 1, 2))
-        return x 
+
+        return x
 
 
 class Block(nn.Module):
@@ -449,76 +391,3 @@ class PatchEmbed(nn.Module):
         # B C H W -> B H W C
         x = x.permute(0, 2, 3, 1)
         return x
-
-class ThreeLayerConvNet(nn.Module):
-    def __init__(self):
-        super(ThreeLayerConvNet, self).__init__()
-        # 定义三层卷积网络
-        self.conv1 = nn.Conv2d(in_channels=2048, out_channels=1024, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=1024, out_channels=512, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, padding=1)
-        # 定义激活函数
-        self.relu = nn.ReLU()
-        
-    def forward(self, x):
-        x = self.relu(self.conv1(x))
-        x = self.relu(self.conv2(x))
-        x = self.relu(self.conv3(x))
-        return x
-
-
-class GatedConv2dWithActivation(torch.nn.Module):
-    """
-    Gated Convlution layer with activation (default activation:LeakyReLU)
-    Params: same as conv2d
-    Input: The feature from last layer "I"
-    Output:\phi(f(I))*\sigmoid(g(I))
-    """
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True,batch_norm=True, activation=torch.nn.LeakyReLU(0.2, inplace=True)):
-        super(GatedConv2dWithActivation, self).__init__()
-        self.batch_norm = batch_norm
-        self.activation = activation
-        self.conv2d = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
-        self.mask_conv2d = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
-        self.batch_norm2d = torch.nn.BatchNorm2d(out_channels)
-        self.sigmoid = torch.nn.Sigmoid()
-
-        '''
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight)
-        '''
-    def gated(self, mask):
-        #return torch.clamp(mask, -1, 1)
-        return self.sigmoid(mask)
-    def forward(self, input):
-        x = self.conv2d(input)
-        mask = self.mask_conv2d(input)
-        if self.activation is not None:
-            x = self.activation(x) * self.gated(mask)
-        else:
-            x = x * self.gated(mask)
-        if self.batch_norm:
-            return self.batch_norm2d(x)
-        else:
-            return x
-        
-class GatedDeConv2dWithActivation(torch.nn.Module):
-    """
-    Gated DeConvlution layer with activation (default activation:LeakyReLU)
-    resize + conv
-    Params: same as conv2d
-    Input: The feature from last layer "I"
-    Output:\phi(f(I))*\sigmoid(g(I))
-    """
-    def __init__(self, scale_factor, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, batch_norm=True,activation=torch.nn.LeakyReLU(0.2, inplace=True)):
-        super(GatedDeConv2dWithActivation, self).__init__()
-        self.conv2d = GatedConv2dWithActivation(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, batch_norm, activation)
-        self.scale_factor = scale_factor
-
-    def forward(self, input):
-        #print(input.size())
-        x = F.interpolate(input, scale_factor=2)
-        return self.conv2d(x)
-    

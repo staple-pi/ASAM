@@ -163,7 +163,7 @@ class ASAM(nn.Module):
         original_image_size = original_image.shape[:2]  #(高，宽)
         input_size = image before preprocess .shape[-2:]
         '''
-        occlude_image_embedding = self.sam_model.image_encoder(image, maskin)
+        occlude_image_embedding = self.sam_model.image_encoder(image)
         sparse_embeddings, dense_embeddings = self.sam_model.prompt_encoder(
             points=None,
             boxes=bbox,
@@ -175,6 +175,7 @@ class ASAM(nn.Module):
             sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
             multimask_output=False,
+            maskin = maskin,
         )
         upscaled_masks = self.postprocess_mask(low_res_masks)
         return upscaled_masks, occlude_image_embedding

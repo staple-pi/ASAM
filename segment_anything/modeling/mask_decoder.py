@@ -67,6 +67,21 @@ class MaskDecoder(nn.Module):
         self.iou_prediction_head = MLP(
             transformer_dim, iou_head_hidden_dim, self.num_mask_tokens, iou_head_depth
         )
+        self.gated_conv1 = nn.Sequential(
+            GatedConv2dWithActivation(in_channels = 512, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+        )
+
+        self.gated_conv2 = nn.Sequential(
+            GatedConv2dWithActivation(in_channels = 512, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+        )
+
+        self.mask_downscaling = nn.Sequential(
+            nn.Conv2d(1, 256, kernel_size=16, stride=16),
+        )       
 
     def forward(
         self,
@@ -75,6 +90,7 @@ class MaskDecoder(nn.Module):
         sparse_prompt_embeddings: torch.Tensor,
         dense_prompt_embeddings: torch.Tensor,
         multimask_output: bool,
+        maskin:torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Predict masks given image and prompt embeddings.
@@ -96,6 +112,7 @@ class MaskDecoder(nn.Module):
             image_pe=image_pe,
             sparse_prompt_embeddings=sparse_prompt_embeddings,
             dense_prompt_embeddings=dense_prompt_embeddings,
+            mask=maskin,
         )
 
         # Select the correct mask or masks for output
@@ -115,6 +132,7 @@ class MaskDecoder(nn.Module):
         image_pe: torch.Tensor,
         sparse_prompt_embeddings: torch.Tensor,
         dense_prompt_embeddings: torch.Tensor,
+        mask: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Predicts masks. See 'forward' for more details."""
         # Concatenate output tokens
@@ -126,6 +144,12 @@ class MaskDecoder(nn.Module):
         #src = torch.repeat_interleave(image_embeddings, tokens.shape[0], dim=0)  
         src = image_embeddings                   ##################################################
         src = src + dense_prompt_embeddings
+        mask_downscaled = self.mask_downscaling(mask)
+
+        y1 = torch.cat((src,mask_downscaled),dim=1)
+        y1 = self.gated_conv1(y1)
+        src = src + y1
+        
         pos_src = torch.repeat_interleave(image_pe, tokens.shape[0], dim=0)
         b, c, h, w = src.shape
 
@@ -133,6 +157,10 @@ class MaskDecoder(nn.Module):
         hs, src = self.transformer(src, pos_src, tokens)
         iou_token_out = hs[:, 0, :]
         mask_tokens_out = hs[:, 1 : (1 + self.num_mask_tokens), :]
+
+        y2 = torch.cat((src,mask_downscaled),dim=1)
+        y2 = self.gated_conv1(y2)
+        src = src + y2
 
         # Upscale mask embeddings and predict masks using the mask tokens
         src = src.transpose(1, 2).view(b, c, h, w)
@@ -175,3 +203,40 @@ class MLP(nn.Module):
         if self.sigmoid_output:
             x = F.sigmoid(x)
         return x
+
+class GatedConv2dWithActivation(torch.nn.Module):
+    """
+    Gated Convlution layer with activation (default activation:LeakyReLU)
+    Params: same as conv2d
+    Input: The feature from last layer "I"
+    Output:\phi(f(I))*\sigmoid(g(I))
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True,batch_norm=True, activation=torch.nn.LeakyReLU(0.2, inplace=True)):
+        super(GatedConv2dWithActivation, self).__init__()
+        self.batch_norm = batch_norm
+        self.activation = activation
+        self.conv2d = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.mask_conv2d = torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.batch_norm2d = torch.nn.BatchNorm2d(out_channels)
+        self.sigmoid = torch.nn.Sigmoid()
+
+        '''
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+        '''
+    def gated(self, mask):
+        #return torch.clamp(mask, -1, 1)
+        return self.sigmoid(mask)
+    def forward(self, input):
+        x = self.conv2d(input)
+        mask = self.mask_conv2d(input)
+        if self.activation is not None:
+            x = self.activation(x) * self.gated(mask)
+        else:
+            x = x * self.gated(mask)
+        if self.batch_norm:
+            return self.batch_norm2d(x)
+        else:
+            return x
