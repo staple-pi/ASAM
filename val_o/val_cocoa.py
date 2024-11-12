@@ -194,7 +194,7 @@ def main(args):
                 no_occ[i] = False
             else:
                 omask =   gt_mask - vmask
-                maskin = np.zeros_like(gt_mask)    
+                #maskin = np.zeros_like(gt_mask)    
                 no_occ[i] = True
             visibel_mask[i]  =vmask     
             ground_truth_masks[i] = gt_mask

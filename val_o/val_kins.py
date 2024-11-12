@@ -181,7 +181,7 @@ def main(args):
             if args.minus_v:
                 maskin = maskin - imask     ##################################################################################
             if a_polys==i_polys:
-                maskin = np.zeros_like(amask)
+                #maskin = np.zeros_like(amask)
                 no_occ[i] = True
             else:
                 no_occ[i] = False

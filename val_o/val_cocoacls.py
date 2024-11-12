@@ -197,7 +197,7 @@ def main(args):
                 omask =  np.zeros_like(gt_mask)     
             if annotation['occlude_rate'] < 0.05:
                 no_occ[i] = True
-                maskin = np.zeros_like(gt_mask)
+                #maskin = np.zeros_like(gt_mask)
                 omask = np.zeros_like(gt_mask)    
             else:
                 no_occ[i] = False
