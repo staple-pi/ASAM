@@ -141,6 +141,15 @@ def mask_to_bbox(mask):
     y_min, y_max = rows.min(), rows.max()
     return [x_min, y_min, x_max, y_max]
 
+def calculate_iou_np(mask_a, mask_b):
+    # 计算交集
+    intersection = np.logical_and(mask_a, mask_b).sum()
+    # 计算并集
+    union = np.logical_or(mask_a, mask_b).sum()
+    # 计算 IoU
+    iou = intersection / union if union != 0 else 0
+    return iou
+
 #sam_checkpoint = "E:/code/fine_mask_unet.pth"
 
 def main(args):
@@ -261,22 +270,23 @@ def main(args):
                 mask_input=mask_input,
                 multimask_output=False,
             )
-            pred = torch.tensor(masks_pred[0], dtype=torch.bool)
-            gt = torch.tensor(gt_binary_mask, dtype=torch.bool)
-            iou = calculate_iou(pred, gt)
+            pred = masks_pred[0]
+            gt = gt_binary_mask
+            iou = calculate_iou_np(pred, gt)
             ious = ious +iou
             instance_num = instance_num + 1
             total_num = total_num + 1
             if no_occ[k] == False:   #表示没有遮挡
                 num_occ+=1
                 totalocc_num+=1
-                occlusion_pred = torch.tensor(np.bitwise_xor(masks_pred[0], visibel_mask[k]),dtype=torch.bool)
-                occlusion_gt = torch.tensor(np.bitwise_and(gt_binary_mask, occlusion_mask[k]),dtype=torch.bool)
-                occlusion_iou = calculate_iou(occlusion_pred, occlusion_gt)
+                occlusion_pred = (masks_pred[0] == 1) & (visibel_mask[k] == 0)
+                occlusion_gt = (gt_binary_mask == 1) & (visibel_mask[k] == 0)
+                occlusion_iou = calculate_iou_np(occlusion_pred,occlusion_gt)
+                #occl_ious1 = occl_ious1 + occlusion_iou1
                 occl_ious = occl_ious + occlusion_iou
 
-        mIoU = (ious / instance_num).float()
-        occlu_mIoU = (occl_ious / num_occ).float()
+        mIoU = (ious / instance_num)#.float()
+        occlu_mIoU = (occl_ious / num_occ)#.float()
         print('miou'+ str(mIoU))
         print('occlu_miou'+ str(occlu_mIoU))
 
@@ -284,8 +294,8 @@ def main(args):
         total_occlu_ious = total_occlu_ious + occl_ious
         batch_no = batch_no + 50
 
-    mIoU = (total_ious / total_num).float()
-    occlu_mIoU = (total_occlu_ious / totalocc_num).float()
+    mIoU = (total_ious / total_num)#.float()
+    occlu_mIoU = (total_occlu_ious / totalocc_num)#.float()
     print('miou'+ str(mIoU))
     print('occlu_miou'+ str(occlu_mIoU))
 

@@ -227,7 +227,7 @@ class SamPredictor:
         )
 
         #image_embeddings = self.model.embedding_encoder(self.features,mask_input)   #######################################
-        image_embeddings,_ = self.model.image_encoder(self.input_image_zb,mask_input)   #######################################
+        image_embeddings = self.model.image_encoder(self.input_image_zb,mask_input)   #######################################
         # Predict masks
         low_res_masks, iou_predictions = self.model.mask_decoder(
             #image_embeddings=self.features,
