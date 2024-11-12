@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_ablation1
+from asam_utils_o import init_distributed_mode, weights_init, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_ablation4
 def str2bool(v):
     if isinstance(v,bool):
         return v
@@ -118,7 +118,7 @@ def main(args):
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_ablation1(asam,train_dataloader, epoch, optimizer, device, args.batch_size, tb_writer)
+        mean_loss = train_ablation4(asam,train_dataloader, epoch, optimizer, device, args.batch_size, tb_writer)
         scheduler.step()
         if rank == 0:
             tags = ["loss","learning_rate"]
@@ -126,7 +126,7 @@ def main(args):
             tb_writer.add_scalar(tags[1], optimizer.param_groups[0]["lr"], epoch)
             #torch.save(model.module.state_dict(), "./weights/model-{}.pth".format(epoch))
             num_epoch = int(epoch / 2)
-            weight_name ="asam-5w-{}.pth".format(num_epoch)
+            weight_name ="asam-ablation4-{}.pth".format(num_epoch)
             torch.save(asam.module.sam_model.state_dict(), os.path.join(args.weight_savepath, weight_name))
     if rank == 0:
         if os.path.exists(checkpoint_path) is True:

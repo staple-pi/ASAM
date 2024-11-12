@@ -398,7 +398,7 @@ def train_ablation1(asam_model, d_model, train_dataloader,epoch,optimizer, optim
     return mean_loss
 
 
-def train_ablation2(asam_model, train_dataloader,epoch,optimizer, device,batch_size,writer):  ###################
+def train_ablation4(asam_model, train_dataloader,epoch,optimizer, device,batch_size,writer):  ###################
 
     #scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True) 
     seg_loss = monai.losses.DiceLoss(sigmoid=True, squared_pred=True, reduction="mean")
