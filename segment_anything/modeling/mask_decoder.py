@@ -157,21 +157,27 @@ class MaskDecoder(nn.Module):
         y1 = self.gated_conv1(y1)
         src = src + y1
         
+
+        
         pos_src = torch.repeat_interleave(image_pe, tokens.shape[0], dim=0)
         b, c, h, w = src.shape
 
         # Run the transformer
         hs, src = self.transformer(src, pos_src, tokens)
-        iou_token_out = hs[:, 0, :]
-        mask_tokens_out = hs[:, 1 : (1 + self.num_mask_tokens), :]
-
+        src = src.view(1, 256, 64, 64)
         y2 = torch.cat((src,mask_downscaled),dim=1)
-        y2 = self.gated_conv1(y2)
+        y2 = self.gated_conv2(y2)
         src = src + y2
 
         y3 = torch.cat((src,mask_downscaled),dim=1)
-        y3 = self.gated_conv1(y3)
+        y3 = self.gated_conv3(y3)
         src = src + y3
+        src = src.view(1, 4096, 256)
+        
+        iou_token_out = hs[:, 0, :]
+        mask_tokens_out = hs[:, 1 : (1 + self.num_mask_tokens), :]
+
+
         # Upscale mask embeddings and predict masks using the mask tokens
         src = src.transpose(1, 2).view(b, c, h, w)
         upscaled_embedding = self.output_upscaling(src)
