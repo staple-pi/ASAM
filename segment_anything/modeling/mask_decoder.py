@@ -78,7 +78,11 @@ class MaskDecoder(nn.Module):
             GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
             GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
         )
-
+        self.gated_conv3 = nn.Sequential(
+            GatedConv2dWithActivation(in_channels = 512, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+            GatedConv2dWithActivation(in_channels = 256, out_channels = 256, kernel_size = 3, stride=1,padding=self.get_pad(64, 3, 1)),
+        )
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 256, kernel_size=16, stride=16),
         )       
@@ -162,6 +166,9 @@ class MaskDecoder(nn.Module):
         y2 = self.gated_conv1(y2)
         src = src + y2
 
+        y3 = torch.cat((src,mask_downscaled),dim=1)
+        y3 = self.gated_conv1(y3)
+        src = src + y3
         # Upscale mask embeddings and predict masks using the mask tokens
         src = src.transpose(1, 2).view(b, c, h, w)
         upscaled_embedding = self.output_upscaling(src)
