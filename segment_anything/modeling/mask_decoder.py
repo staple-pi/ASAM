@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from typing import List, Tuple, Type
 
 from .common import LayerNorm2d
-
+import numpy as np
 
 class MaskDecoder(nn.Module):
     def __init__(
@@ -86,7 +86,10 @@ class MaskDecoder(nn.Module):
         self.mask_downscaling = nn.Sequential(
             nn.Conv2d(1, 256, kernel_size=16, stride=16),
         )       
-
+    def get_pad(self,in_:int, ksize:int, stride:int, atrous:int=1)->int:
+        out_ = np.ceil(float(in_)/stride)
+        return int(((out_ - 1) * stride + atrous*(ksize-1) +1 - in_)/2)
+    
     def forward(
         self,
         image_embeddings: torch.Tensor,
