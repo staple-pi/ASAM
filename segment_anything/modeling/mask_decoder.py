@@ -164,7 +164,7 @@ class MaskDecoder(nn.Module):
 
         # Run the transformer
         hs, src = self.transformer(src, pos_src, tokens)
-        src = src.view(1, 256, 64, 64)
+        src = src.view(b, 256, 64, 64)
         y2 = torch.cat((src,mask_downscaled),dim=1)
         y2 = self.gated_conv2(y2)
         src = src + y2
@@ -172,7 +172,7 @@ class MaskDecoder(nn.Module):
         y3 = torch.cat((src,mask_downscaled),dim=1)
         y3 = self.gated_conv3(y3)
         src = src + y3
-        src = src.view(1, 4096, 256)
+        src = src.view(b, 4096, 256)
         
         iou_token_out = hs[:, 0, :]
         mask_tokens_out = hs[:, 1 : (1 + self.num_mask_tokens), :]
