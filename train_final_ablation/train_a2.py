@@ -23,7 +23,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
-from asam_utils_o import init_distributed_mode, weights_init, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_ablation1
+from asam_utils_o import init_distributed_mode, weights_init, ASAM, SA1BDataset, cleanup, MaskDiscriminator,train_ablation2
 def str2bool(v):
     if isinstance(v,bool):
         return v
