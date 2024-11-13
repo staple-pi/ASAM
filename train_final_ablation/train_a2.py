@@ -118,7 +118,7 @@ def main(args):
     scheduler = CosineAnnealingLR(optimizer,T_max=args.epochs,eta_min=args.end_lr)
     for epoch in range(args.epochs):
         train_sampler.set_epoch(epoch)
-        mean_loss = train_ablation1(asam,train_dataloader, epoch, optimizer, device, args.batch_size, tb_writer)
+        mean_loss = train_ablation2(asam,train_dataloader, epoch, optimizer, device, args.batch_size, tb_writer)
         scheduler.step()
         if rank == 0:
             tags = ["loss","learning_rate"]
